@@ -4,113 +4,238 @@ import {
   AbsoluteFill,
   Composition,
   Sequence,
+  Video,
   interpolate,
   spring,
   useCurrentFrame,
-  useVideoConfig,
-  Video,
-  Img
+  useVideoConfig
 } from 'remotion';
+
+
+// ======================================================
+// DEFAULT PROPS
+// ======================================================
 
 const DEFAULT_PROPS = {
   totalDurationFrames: 300,
   fps: 30,
   timelineShots: [],
-  scenes: []
+  scenes: [],
+  scene: null,
+  visual: null
 };
 
+
+// ======================================================
+// GLOBAL DESIGN TOKENS
+// ======================================================
+
+const COLORS = {
+  bg0: '#05070d',
+  bg1: '#08111f',
+  panel: 'rgba(14,20,34,0.94)',
+  panelSoft: 'rgba(18,27,46,0.88)',
+  border: 'rgba(255,255,255,0.12)',
+  text: '#ffffff',
+  muted: 'rgba(255,255,255,0.62)',
+  blue: '#6d7cff',
+  cyan: '#29d3ff',
+  green: '#16ddb2',
+  red: '#ff6874',
+  amber: '#ffbd59'
+};
+
+
+const FONT =
+  'Arial, Helvetica, sans-serif';
+
+
+// ======================================================
+// HELPERS
+// ======================================================
+
+const safeArray = (value) =>
+  Array.isArray(value)
+    ? value
+    : [];
+
+
+const clamp = (
+  value,
+  min,
+  max
+) =>
+  Math.max(
+    min,
+    Math.min(
+      max,
+      value
+    )
+  );
+
+
 const getHeadline = (shot) =>
-  shot?.text?.headline ||
   shot?.title ||
-  shot?.text?.keyword ||
-  shot?.captionPlan?.highlightKeywords?.[0] ||
+  shot?.text?.headline ||
+  shot?.textElements?.[0] ||
+  shot?.captionPlan
+    ?.highlightKeywords?.[0] ||
   '';
 
-const getKeyword = (shot) =>
-  shot?.text?.keyword ||
-  shot?.captionPlan?.highlightKeywords?.[0] ||
-  getHeadline(shot);
+
+const getTextElements = (shot) =>
+  safeArray(
+    shot?.textElements ||
+    shot?.visual?.textElements
+  );
+
+
+const getTemplate = (shot) =>
+  shot?.template ||
+  shot?.visual?.template ||
+  shot?.scene?.template ||
+  'generic';
+
 
 const getLayout = (shot) =>
   shot?.layout ||
-  shot?.visualAsset?.layout ||
-  shot?.fallback?.layout ||
-  shot?.template ||
+  shot?.visual?.layout ||
+  shot?.scene?.layout ||
   'generic';
 
-const getVisualAssetUrl = (shot) =>
-  shot?.asset?.url ||
-  shot?.asset?.downloadUrl ||
-  shot?.asset?.videoUrl ||
-  shot?.visualAsset?.url ||
-  shot?.visualAsset?.downloadUrl ||
-  shot?.visualAsset?.videoUrl ||
-  shot?.stock?.url ||
-  shot?.stock?.videoUrl ||
-  shot?.mediaUrl ||
-  shot?.videoUrl ||
+
+const getStock = (shot) =>
+  shot?.stock ||
+  shot?.visual?.stock ||
+  shot?.scene?.stock ||
   null;
 
-const getImageUrl = (shot) =>
-  shot?.asset?.imageUrl ||
-  shot?.visualAsset?.imageUrl ||
-  shot?.imageUrl ||
-  null;
 
-const Background = () => (
+const getUIComponents = (shot) =>
+  safeArray(
+    shot?.ui?.components ||
+    shot?.visual?.ui?.components ||
+    shot?.scene?.ui?.components
+  );
+
+
+const getOverlays = (shot) =>
+  safeArray(
+    shot?.graphics?.overlays ||
+    shot?.visual?.graphics?.overlays ||
+    shot?.scene?.graphics?.overlays
+  );
+
+
+const getMotionActions = (shot) =>
+  safeArray(
+    shot?.motion?.actions ||
+    shot?.visual?.motion?.actions ||
+    shot?.scene?.motion?.actions
+  );
+
+
+const getStockUrl = (shot) => {
+
+  const stock =
+    getStock(shot);
+
+  if (
+    stock?.available === true &&
+    stock?.url
+  ) {
+    return stock.url;
+  }
+
+  return (
+    shot?.asset?.url ||
+    shot?.visualAsset?.url ||
+    shot?.videoUrl ||
+    null
+  );
+};
+
+
+const getDurationFrames = (shot) =>
+  Math.max(
+    1,
+    Number(
+      shot?.durationFrames ||
+      1
+    )
+  );
+
+
+// ======================================================
+// BACKGROUND COMPONENTS
+// ======================================================
+
+const BaseBackground = () => (
   <AbsoluteFill
     style={{
       background:
-        'linear-gradient(135deg,#08101f 0%,#101827 48%,#070a11 100%)'
+        'linear-gradient(135deg,#05070d 0%,#0a1322 48%,#05070d 100%)'
     }}
   />
 );
 
-const SoftGrid = ({opacity = 0.1}) => (
+
+const Grid = ({
+  opacity = 0.08
+}) => (
   <AbsoluteFill
     style={{
       opacity,
       backgroundImage:
-        'linear-gradient(rgba(255,255,255,0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.055) 1px, transparent 1px)',
-      backgroundSize: '70px 70px'
+        'linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px)',
+      backgroundSize:
+        '64px 64px'
     }}
   />
 );
 
-const Glow = ({
-  x = '20%',
-  y = '20%',
-  size = 700,
+
+const AmbientGlow = ({
+  left = '50%',
+  top = '50%',
+  size = 900,
+  color = '109,124,255',
   opacity = 0.18
 }) => (
   <div
     style={{
       position: 'absolute',
-      left: x,
-      top: y,
+      left,
+      top,
       width: size,
       height: size,
-      transform: 'translate(-50%,-50%)',
+      transform:
+        'translate(-50%,-50%)',
       borderRadius: '50%',
       background:
-        `radial-gradient(circle, rgba(90,110,255,${opacity}) 0%, rgba(90,110,255,0) 70%)`,
+        `radial-gradient(circle, rgba(${color},${opacity}) 0%, rgba(${color},0) 70%)`,
       pointerEvents: 'none'
     }}
   />
 );
 
-const Card = ({
+
+// ======================================================
+// BASIC UI COMPONENTS
+// ======================================================
+
+const GlassCard = ({
   children,
   style = {}
 }) => (
   <div
     style={{
       background:
-        'linear-gradient(145deg, rgba(22,29,46,0.96), rgba(10,15,27,0.96))',
+        'linear-gradient(145deg,rgba(18,27,46,0.96),rgba(7,11,20,0.96))',
       border:
-        '1px solid rgba(255,255,255,0.14)',
+        `1px solid ${COLORS.border}`,
       boxShadow:
-        '0 28px 80px rgba(0,0,0,0.42)',
+        '0 30px 90px rgba(0,0,0,0.42)',
       borderRadius:
         26,
       ...style
@@ -120,24 +245,27 @@ const Card = ({
   </div>
 );
 
-const BrowserChrome = () => (
+
+const BrowserDots = () => (
   <div
     style={{
       display: 'flex',
-      gap: 12,
-      marginBottom: 34
+      gap: 10
     }}
   >
-    {[0, 1, 2].map(
-      (index) => (
+    {[
+      '#ff6d73',
+      '#ffbd59',
+      '#25d39c'
+    ].map(
+      (color) => (
         <div
-          key={index}
+          key={color}
           style={{
-            width: 16,
-            height: 16,
+            width: 14,
+            height: 14,
             borderRadius: 999,
-            background:
-              'rgba(255,255,255,0.24)'
+            background: color
           }}
         />
       )
@@ -145,1008 +273,567 @@ const BrowserChrome = () => (
   </div>
 );
 
-const FakeLines = () => (
+
+const Badge = ({
+  children,
+  color = COLORS.blue
+}) => (
   <div
     style={{
-      marginTop: 34
+      display: 'inline-flex',
+      alignItems: 'center',
+      padding: '10px 18px',
+      borderRadius: 999,
+      background:
+        `${color}22`,
+      border:
+        `1px solid ${color}66`,
+      color: '#fff',
+      fontFamily: FONT,
+      fontSize: 24,
+      fontWeight: 700
     }}
   >
-    {['55%', '78%', '67%', '85%'].map(
-      (
-        width,
-        index
-      ) => (
-        <div
-          key={index}
-          style={{
-            marginTop:
-              index === 0
-                ? 0
-                : 22,
-            height:
-              index === 0
-                ? 4
-                : 3,
-            width,
-            background:
-              index === 0
-                ? 'rgba(255,255,255,0.30)'
-                : 'rgba(255,255,255,0.15)',
-            borderRadius:
-              10
-          }}
-        />
-      )
-    )}
+    {children}
   </div>
 );
 
-const HeroLayout = ({
-  shot
-}) => {
-  const frame =
-    useCurrentFrame();
 
-  const {
-    fps
-  } =
-    useVideoConfig();
-
-  const intro =
-    spring({
-      frame,
-      fps,
-      config: {
-        damping: 14,
-        stiffness: 120,
-        mass: 0.8
-      }
-    });
-
-  const opacity =
-    interpolate(
-      frame,
-      [0, 10],
-      [0, 1],
-      {
-        extrapolateRight:
-          'clamp'
-      }
-    );
-
-  const scale =
-    0.94 +
-    intro * 0.06;
-
-  const hookKeyword =
-    shot?.graphicElements?.find(
-      (
-        element
-      ) =>
-        element.type ===
-        'hook_keyword'
-    )?.text ||
-    getKeyword(shot);
-
-  return (
-    <AbsoluteFill>
-      <SoftGrid
-        opacity={0.1}
-      />
-
-      <Glow
-        x="25%"
-        y="30%"
-        size={850}
-        opacity={0.2}
-      />
-
-      <AbsoluteFill
-        style={{
-          justifyContent:
-            'center',
-          alignItems:
-            'center',
-          padding:
-            '120px'
-        }}
-      >
-        <div
-          style={{
-            opacity,
-            transform:
-              `scale(${scale})`,
-            maxWidth:
-              1450,
-            textAlign:
-              'center'
-          }}
-        >
-          <div
-            style={{
-              fontFamily:
-                'Arial, Helvetica, sans-serif',
-              fontSize:
-                92,
-              fontWeight:
-                800,
-              lineHeight:
-                1.06,
-              color:
-                '#ffffff',
-              letterSpacing:
-                '-2px',
-              textShadow:
-                '0 8px 40px rgba(0,0,0,0.4)'
-            }}
-          >
-            {getHeadline(shot)}
-          </div>
-
-          {hookKeyword
-            ? (
-              <div
-                style={{
-                  marginTop:
-                    42,
-                  display:
-                    'inline-block',
-                  padding:
-                    '14px 28px',
-                  borderRadius:
-                    18,
-                  background:
-                    'rgba(255,255,255,0.10)',
-                  border:
-                    '1px solid rgba(255,255,255,0.20)',
-                  fontFamily:
-                    'Arial, Helvetica, sans-serif',
-                  fontSize:
-                    38,
-                  fontWeight:
-                    700,
-                  color:
-                    '#ffffff',
-                  textTransform:
-                    'uppercase',
-                  letterSpacing:
-                    '2px'
-                }}
-              >
-                {hookKeyword}
-              </div>
-            )
-            : null}
-        </div>
-      </AbsoluteFill>
-    </AbsoluteFill>
-  );
-};
-
-const ScreenFocusLayout = ({
-  shot
-}) => {
-  const frame =
-    useCurrentFrame();
-
-  const duration =
-    Math.max(
-      1,
-      shot?.durationFrames || 1
-    );
-
-  const x =
-    interpolate(
-      frame,
-      [0, duration],
-      [
-        0,
-        shot?.motion
-          ?.panDistancePx || 0
-      ],
-      {
-        extrapolateRight:
-          'clamp'
-      }
-    );
-
-  const scale =
-    interpolate(
-      frame,
-      [0, duration],
-      [
-        shot?.motion
-          ?.zoomScaleFrom || 1,
-        shot?.motion
-          ?.zoomScaleTo || 1.03
-      ],
-      {
-        extrapolateRight:
-          'clamp'
-      }
-    );
-
-  return (
-    <AbsoluteFill>
-      <SoftGrid
-        opacity={0.08}
-      />
-
-      <AbsoluteFill
-        style={{
-          padding:
-            '110px 140px',
-          justifyContent:
-            'center'
-        }}
-      >
-        <Card
-          style={{
-            width:
-              '100%',
-            height:
-              '76%',
-            overflow:
-              'hidden',
-            transform:
-              `translateX(${x}px) scale(${scale})`,
-            padding:
-              40
-          }}
-        >
-          <BrowserChrome />
-
-          <div
-            style={{
-              fontFamily:
-                'Arial, Helvetica, sans-serif',
-              fontSize:
-                54,
-              fontWeight:
-                700,
-              color:
-                '#ffffff'
-            }}
-          >
-            {getKeyword(shot)}
-          </div>
-
-          <FakeLines />
-        </Card>
-      </AbsoluteFill>
-    </AbsoluteFill>
-  );
-};
-
-const SplitGraphicLayout = ({
-  shot
-}) => {
-  const frame =
-    useCurrentFrame();
-
-  const opacity =
-    interpolate(
-      frame,
-      [0, 12],
-      [0, 1],
-      {
-        extrapolateRight:
-          'clamp'
-      }
-    );
-
-  return (
-    <AbsoluteFill>
-      <SoftGrid
-        opacity={0.12}
-      />
-
-      <AbsoluteFill
-        style={{
-          padding:
-            '110px 130px',
-          display:
-            'flex',
-          flexDirection:
-            'row',
-          alignItems:
-            'center',
-          gap:
-            80
-        }}
-      >
-        <div
-          style={{
-            flex:
-              1,
-            opacity,
-            fontFamily:
-              'Arial, Helvetica, sans-serif',
-            fontSize:
-              88,
-            lineHeight:
-              1,
-            fontWeight:
-              800,
-            color:
-              '#ffffff',
-            textTransform:
-              'uppercase',
-            letterSpacing:
-              '-1px'
-          }}
-        >
-          {getKeyword(shot)}
-        </div>
-
-        <div
-          style={{
-            flex:
-              1,
-            display:
-              'grid',
-            gridTemplateColumns:
-              'repeat(2, 1fr)',
-            gap:
-              24
-          }}
-        >
-          {[0, 1, 2, 3].map(
-            (
-              index
-            ) => (
-              <Card
-                key={index}
-                style={{
-                  height:
-                    180,
-                  transform:
-                    `translateY(${Math.sin(
-                      (
-                        frame +
-                        index * 7
-                      ) /
-                      15
-                    ) * 10}px)`
-                }}
-              />
-            )
-          )}
-        </div>
-      </AbsoluteFill>
-    </AbsoluteFill>
-  );
-};
-
-const FullBleedMediaLayout = ({
-  shot
-}) => {
-  const frame =
-    useCurrentFrame();
-
-  const duration =
-    Math.max(
-      1,
-      shot?.durationFrames || 1
-    );
-
-  const scale =
-    interpolate(
-      frame,
-      [0, duration],
-      [
-        shot?.motion
-          ?.zoomScaleFrom || 1,
-        shot?.motion
-          ?.zoomScaleTo || 1.05
-      ],
-      {
-        extrapolateRight:
-          'clamp'
-      }
-    );
-
-  const mediaUrl =
-    getVisualAssetUrl(shot);
-
-  const imageUrl =
-    getImageUrl(shot);
-
-  return (
-    <AbsoluteFill
+const CheckRow = ({
+  text,
+  active = true
+}) => (
+  <div
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 16,
+      marginTop: 20
+    }}
+  >
+    <div
       style={{
-        transform:
-          `scale(${scale})`
+        width: 34,
+        height: 34,
+        borderRadius: 10,
+        background:
+          active
+            ? 'rgba(22,221,178,0.22)'
+            : 'rgba(255,104,116,0.20)',
+        border:
+          active
+            ? '1px solid rgba(22,221,178,0.60)'
+            : '1px solid rgba(255,104,116,0.60)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 22,
+        color:
+          active
+            ? COLORS.green
+            : COLORS.red
       }}
     >
-      {mediaUrl
-        ? (
-          <Video
-            src={mediaUrl}
-            muted
-            style={{
-              width:
-                '100%',
-              height:
-                '100%',
-              objectFit:
-                'cover'
-            }}
-          />
-        )
-        : imageUrl
-          ? (
-            <Img
-              src={imageUrl}
-              style={{
-                width:
-                  '100%',
-                height:
-                  '100%',
-                objectFit:
-                  'cover'
-              }}
-            />
-          )
-          : (
-            <AbsoluteFill
-              style={{
-                background:
-                  'radial-gradient(circle at 30% 20%, rgba(90,110,255,0.30), transparent 40%), radial-gradient(circle at 70% 70%, rgba(0,220,180,0.22), transparent 45%), linear-gradient(135deg,#0b1020,#060912)'
-              }}
-            />
-          )}
+      {active ? '✓' : '!'}
+    </div>
+
+    <div
+      style={{
+        fontFamily: FONT,
+        fontSize: 30,
+        color: '#fff',
+        fontWeight: 650
+      }}
+    >
+      {text}
+    </div>
+  </div>
+);
+
+
+// ======================================================
+// STOCK BACKGROUND
+// ======================================================
+
+const StockBackground = ({
+  shot,
+  darken = 0.42,
+  blur = 0
+}) => {
+
+  const frame =
+    useCurrentFrame();
+
+  const duration =
+    getDurationFrames(shot);
+
+  const src =
+    getStockUrl(shot);
+
+  const zoom =
+    interpolate(
+      frame,
+      [0, duration],
+      [1.02, 1.08],
+      {
+        extrapolateRight: 'clamp'
+      }
+    );
+
+  if (!src) {
+    return null;
+  }
+
+  return (
+    <>
+      <AbsoluteFill
+        style={{
+          overflow: 'hidden'
+        }}
+      >
+        <Video
+          src={src}
+          muted
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            transform:
+              `scale(${zoom})`,
+            filter:
+              blur > 0
+                ? `blur(${blur}px)`
+                : undefined
+          }}
+        />
+      </AbsoluteFill>
 
       <AbsoluteFill
         style={{
           background:
-            'linear-gradient(90deg, rgba(5,8,15,0.78) 0%, rgba(5,8,15,0.25) 50%, rgba(5,8,15,0.55) 100%)'
+            `linear-gradient(90deg,rgba(4,7,13,${darken + 0.18}) 0%,rgba(4,7,13,${darken}) 48%,rgba(4,7,13,${darken + 0.08}) 100%)`
         }}
       />
-
-      <div
-        style={{
-          position:
-            'absolute',
-          left:
-            110,
-          bottom:
-            105,
-          maxWidth:
-            1000,
-          fontFamily:
-            'Arial, Helvetica, sans-serif',
-          fontSize:
-            58,
-          fontWeight:
-            800,
-          color:
-            '#ffffff',
-          lineHeight:
-            1.05,
-          textShadow:
-            '0 8px 32px rgba(0,0,0,0.6)'
-        }}
-      >
-        {getKeyword(shot)}
-      </div>
-    </AbsoluteFill>
+    </>
   );
 };
 
-const TimelineTransformLayout = ({
+
+// ======================================================
+// 1. HOOK TRANSFORMATION
+// ======================================================
+
+const HookTransformation = ({
   shot
 }) => {
+
   const frame =
     useCurrentFrame();
 
-  const {
-    fps
-  } =
+  const {fps} =
     useVideoConfig();
 
-  const intro =
+  const progress =
     spring({
       frame,
       fps,
       config: {
         damping: 14,
-        stiffness: 120
+        stiffness: 115
       }
     });
 
-  return (
-    <AbsoluteFill>
-      <SoftGrid
-        opacity={0.08}
-      />
+  const text =
+    getTextElements(shot);
 
-      <Glow
-        x="30%"
-        y="65%"
-        size={900}
-        opacity={0.16}
-      />
+  const leftX =
+    interpolate(
+      progress,
+      [0, 1],
+      [-90, 0]
+    );
 
-      <AbsoluteFill
-        style={{
-          padding:
-            '90px 120px'
-        }}
-      >
-        <div
-          style={{
-            fontFamily:
-              'Arial, Helvetica, sans-serif',
-            fontSize:
-              64,
-            fontWeight:
-              800,
-            color:
-              '#fff',
-            maxWidth:
-              1200
-          }}
-        >
-          {getHeadline(shot)}
-        </div>
-
-        <div
-          style={{
-            marginTop:
-              80,
-            position:
-              'relative',
-            height:
-              520
-          }}
-        >
-          <Card
-            style={{
-              position:
-                'absolute',
-              left:
-                0,
-              top:
-                130,
-              width:
-                580,
-              height:
-                300,
-              padding:
-                30,
-              transform:
-                `scale(${0.92 + intro * 0.08})`
-            }}
-          >
-            <BrowserChrome />
-
-            <div
-              style={{
-                height:
-                  130,
-                borderRadius:
-                  16,
-                background:
-                  'linear-gradient(135deg,rgba(90,110,255,0.28),rgba(0,220,180,0.16))'
-              }}
-            />
-
-            <div
-              style={{
-                display:
-                  'flex',
-                gap:
-                  10,
-                marginTop:
-                  18
-              }}
-            >
-              {[0, 1, 2, 3, 4, 5].map(
-                (
-                  index
-                ) => (
-                  <div
-                    key={index}
-                    style={{
-                      flex:
-                        1,
-                      height:
-                        42,
-                      borderRadius:
-                        8,
-                      background:
-                        index % 2 === 0
-                          ? 'rgba(90,110,255,0.45)'
-                          : 'rgba(255,255,255,0.12)'
-                    }}
-                  />
-                )
-              )}
-            </div>
-          </Card>
-
-          <div
-            style={{
-              position:
-                'absolute',
-              left:
-                650,
-              top:
-                245,
-              fontSize:
-                72,
-              color:
-                'rgba(255,255,255,0.75)',
-              transform:
-                `translateX(${Math.sin(
-                  frame / 8
-                ) * 8}px)`
-            }}
-          >
-            →
-          </div>
-
-          <div
-            style={{
-              position:
-                'absolute',
-              right:
-                0,
-              top:
-                40,
-              width:
-                760,
-              display:
-                'grid',
-              gridTemplateColumns:
-                'repeat(2,1fr)',
-              gap:
-                22
-            }}
-          >
-            {[
-              'CLIP 01',
-              'CLIP 02',
-              'POST',
-              'SHORT'
-            ].map(
-              (
-                label,
-                index
-              ) => (
-                <Card
-                  key={label}
-                  style={{
-                    height:
-                      205,
-                    padding:
-                      24,
-                    transform:
-                      `translateY(${Math.sin(
-                        (
-                          frame +
-                          index * 10
-                        ) /
-                        13
-                      ) * 8}px)`
-                  }}
-                >
-                  <div
-                    style={{
-                      height:
-                        102,
-                      borderRadius:
-                        14,
-                      background:
-                        'linear-gradient(135deg,rgba(255,255,255,0.12),rgba(90,110,255,0.14))'
-                    }}
-                  />
-
-                  <div
-                    style={{
-                      marginTop:
-                        18,
-                      color:
-                        '#fff',
-                      fontSize:
-                        26,
-                      fontWeight:
-                        700,
-                      fontFamily:
-                        'Arial'
-                    }}
-                  >
-                    {label}
-                  </div>
-                </Card>
-              )
-            )}
-          </div>
-        </div>
-      </AbsoluteFill>
-    </AbsoluteFill>
-  );
-};
-
-const EditorWorkspaceLayout = ({
-  shot
-}) => {
-  const frame =
-    useCurrentFrame();
-
-  const mediaUrl =
-    getVisualAssetUrl(shot);
+  const rightX =
+    interpolate(
+      progress,
+      [0, 1],
+      [90, 0]
+    );
 
   return (
     <AbsoluteFill>
-      {mediaUrl
-        ? (
-          <Video
-            src={mediaUrl}
-            muted
-            style={{
-              width:
-                '100%',
-              height:
-                '100%',
-              objectFit:
-                'cover'
-            }}
-          />
-        )
-        : (
-          <>
-            <SoftGrid
-              opacity={0.08}
-            />
+      <BaseBackground />
 
-            <AbsoluteFill
-              style={{
-                padding:
-                  '85px 105px'
-              }}
-            >
-              <Card
-                style={{
-                  width:
-                    '100%',
-                  height:
-                    '100%',
-                  padding:
-                    34
-                }}
-              >
-                <BrowserChrome />
-
-                <div
-                  style={{
-                    display:
-                      'grid',
-                    gridTemplateColumns:
-                      '1fr 360px',
-                    gap:
-                      24,
-                    height:
-                      '68%'
-                  }}
-                >
-                  <div
-                    style={{
-                      borderRadius:
-                        18,
-                      background:
-                        'linear-gradient(135deg,rgba(90,110,255,0.18),rgba(0,0,0,0.45))',
-                      display:
-                        'flex',
-                      alignItems:
-                        'center',
-                      justifyContent:
-                        'center'
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize:
-                          46,
-                        fontWeight:
-                          800,
-                        color:
-                          '#fff',
-                        fontFamily:
-                          'Arial'
-                      }}
-                    >
-                      VIDEO PREVIEW
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      display:
-                        'grid',
-                      gridTemplateRows:
-                        'repeat(4,1fr)',
-                      gap:
-                        14
-                    }}
-                  >
-                    {[0, 1, 2, 3].map(
-                      (
-                        index
-                      ) => (
-                        <div
-                          key={index}
-                          style={{
-                            borderRadius:
-                              14,
-                            background:
-                              'rgba(255,255,255,0.06)',
-                            border:
-                              '1px solid rgba(255,255,255,0.10)'
-                          }}
-                        />
-                      )
-                    )}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    marginTop:
-                      28,
-                    display:
-                      'flex',
-                    gap:
-                      10,
-                    height:
-                      110,
-                    alignItems:
-                      'center'
-                  }}
-                >
-                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(
-                    (
-                      index
-                    ) => (
-                      <div
-                        key={index}
-                        style={{
-                          flex:
-                            1,
-                          height:
-                            44 +
-                            (
-                              index % 3
-                            ) * 15,
-                          borderRadius:
-                            7,
-                          background:
-                            index % 2 === 0
-                              ? 'rgba(90,110,255,0.55)'
-                              : 'rgba(255,255,255,0.13)',
-                          transform:
-                            `translateY(${Math.sin(
-                              (
-                                frame +
-                                index * 4
-                              ) /
-                              10
-                            ) * 3}px)`
-                        }}
-                      />
-                    )
-                  )}
-                </div>
-              </Card>
-            </AbsoluteFill>
-          </>
-        )}
-
-      <AbsoluteFill
-        style={{
-          background:
-            mediaUrl
-              ? 'linear-gradient(90deg,rgba(6,9,16,0.70),rgba(6,9,16,0.10))'
-              : 'transparent'
-        }}
+      <Grid
+        opacity={0.11}
       />
 
-      <div
-        style={{
-          position:
-            'absolute',
-          left:
-            110,
-          bottom:
-            75,
-          maxWidth:
-            1000,
-          fontSize:
-            58,
-          fontWeight:
-            800,
-          color:
-            '#fff',
-          fontFamily:
-            'Arial',
-          textShadow:
-            '0 8px 30px rgba(0,0,0,.6)'
-        }}
-      >
-        {getHeadline(shot)}
-      </div>
-    </AbsoluteFill>
-  );
-};
-
-const OfferCardsLayout = ({
-  shot
-}) => {
-  const frame =
-    useCurrentFrame();
-
-  const cards =
-    shot?.graphicElements
-      ?.filter(
-        (
-          element
-        ) =>
-          element.type ===
-          'card'
-      )
-      ?.map(
-        (
-          element
-        ) =>
-          element.text
-      )
-      ?.filter(Boolean) ||
-    [];
-
-  const displayCards =
-    cards.length > 0
-      ? cards.slice(
-          0,
-          3
-        )
-      : [
-          '5 CLIPS',
-          'TÍTULOS',
-          'SUBTÍTULOS'
-        ];
-
-  return (
-    <AbsoluteFill>
-      <SoftGrid
-        opacity={0.1}
+      <AmbientGlow
+        left="24%"
+        top="30%"
+        color="255,104,116"
+        opacity={0.13}
       />
 
-      <Glow
-        x="78%"
-        y="20%"
-        size={700}
+      <AmbientGlow
+        left="78%"
+        top="70%"
+        color="22,221,178"
         opacity={0.14}
       />
 
       <AbsoluteFill
         style={{
           padding:
-            '100px 120px'
+            '86px 100px'
         }}
       >
         <div
           style={{
-            fontSize:
-              66,
-            fontWeight:
-              800,
+            fontFamily: FONT,
+            fontSize: 34,
             color:
-              '#fff',
-            fontFamily:
-              'Arial',
-            maxWidth:
-              1300
+              COLORS.muted,
+            fontWeight: 700
+          }}
+        >
+          DE CAOS A SISTEMA
+        </div>
+
+        <div
+          style={{
+            marginTop: 26,
+            fontFamily: FONT,
+            fontSize: 72,
+            lineHeight: 1.03,
+            color: '#fff',
+            fontWeight: 850,
+            maxWidth: 1450,
+            letterSpacing: '-1px'
+          }}
+        >
+          {text[0] ||
+            getHeadline(shot)}
+        </div>
+
+        <div
+          style={{
+            marginTop: 68,
+            display: 'grid',
+            gridTemplateColumns:
+              '1fr 140px 1fr',
+            gap: 28,
+            alignItems: 'center'
+          }}
+        >
+          <GlassCard
+            style={{
+              height: 510,
+              padding: 34,
+              transform:
+                `translateX(${leftX}px)`
+            }}
+          >
+            <Badge
+              color={COLORS.red}
+            >
+              ANTES
+            </Badge>
+
+            <div
+              style={{
+                marginTop: 34,
+                display: 'grid',
+                gap: 16
+              }}
+            >
+              {[
+                'Notas dispersas',
+                'Instrucciones repetidas',
+                'Tareas manuales',
+                'Decisiones sin estructura'
+              ].map(
+                (
+                  label,
+                  index
+                ) => (
+                  <div
+                    key={label}
+                    style={{
+                      padding:
+                        '18px 22px',
+                      borderRadius: 16,
+                      background:
+                        index % 2 === 0
+                          ? 'rgba(255,104,116,0.11)'
+                          : 'rgba(255,255,255,0.055)',
+                      border:
+                        '1px solid rgba(255,255,255,0.08)',
+                      color: '#fff',
+                      fontFamily: FONT,
+                      fontSize: 30,
+                      transform:
+                        `rotate(${index % 2 === 0 ? -1.4 : 1.2}deg)`
+                    }}
+                  >
+                    {label}
+                  </div>
+                )
+              )}
+            </div>
+          </GlassCard>
+
+          <div
+            style={{
+              textAlign: 'center',
+              fontSize: 84,
+              color:
+                COLORS.cyan,
+              transform:
+                `scale(${0.88 + progress * 0.12})`
+            }}
+          >
+            →
+          </div>
+
+          <GlassCard
+            style={{
+              height: 510,
+              padding: 34,
+              transform:
+                `translateX(${rightX}px)`
+            }}
+          >
+            <Badge
+              color={COLORS.green}
+            >
+              DESPUÉS
+            </Badge>
+
+            <div
+              style={{
+                marginTop: 34
+              }}
+            >
+              <CheckRow
+                text="Entrada clara"
+              />
+
+              <CheckRow
+                text="Resultado definido"
+              />
+
+              <CheckRow
+                text="Límites explícitos"
+              />
+
+              <CheckRow
+                text="Asistente reutilizable"
+              />
+            </div>
+          </GlassCard>
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+
+// ======================================================
+// 2. STOCK + UI INTRO
+// ======================================================
+
+const StockPlusUI = ({
+  shot
+}) => {
+
+  const frame =
+    useCurrentFrame();
+
+  const {fps} =
+    useVideoConfig();
+
+  const enter =
+    spring({
+      frame,
+      fps,
+      config: {
+        damping: 16,
+        stiffness: 100
+      }
+    });
+
+  const text =
+    getTextElements(shot);
+
+  return (
+    <AbsoluteFill>
+      <BaseBackground />
+
+      <StockBackground
+        shot={shot}
+        darken={0.46}
+      />
+
+      <AbsoluteFill
+        style={{
+          padding:
+            '95px 110px',
+          justifyContent:
+            'center'
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 760
+          }}
+        >
+          <Badge>
+            WORKFLOW
+          </Badge>
+
+          <div
+            style={{
+              marginTop: 28,
+              fontFamily: FONT,
+              fontSize: 76,
+              lineHeight: 1.02,
+              fontWeight: 850,
+              color: '#fff',
+              textShadow:
+                '0 12px 34px rgba(0,0,0,.6)'
+            }}
+          >
+            {getHeadline(shot)}
+          </div>
+
+          <div
+            style={{
+              marginTop: 42,
+              display: 'grid',
+              gap: 16
+            }}
+          >
+            {[
+              text[0] ||
+                'Elige la herramienta',
+              text[1] ||
+                'Dale instrucciones claras'
+            ].map(
+              (
+                label,
+                index
+              ) => (
+                <GlassCard
+                  key={index}
+                  style={{
+                    padding:
+                      '22px 26px',
+                    transform:
+                      `translateX(${(1 - enter) * (70 + index * 30)}px)`,
+                    opacity: enter
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 18
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 14,
+                        background:
+                          index === 0
+                            ? COLORS.blue
+                            : COLORS.green,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#fff',
+                        fontFamily: FONT,
+                        fontWeight: 800
+                      }}
+                    >
+                      {index + 1}
+                    </div>
+
+                    <div
+                      style={{
+                        fontFamily: FONT,
+                        fontSize: 34,
+                        fontWeight: 750,
+                        color: '#fff'
+                      }}
+                    >
+                      {label}
+                    </div>
+                  </div>
+                </GlassCard>
+              )
+            )}
+          </div>
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+
+// ======================================================
+// 3. NOTES TO STRUCTURE
+// ======================================================
+
+const NotesToStructure = ({
+  shot
+}) => {
+
+  const frame =
+    useCurrentFrame();
+
+  const {fps} =
+    useVideoConfig();
+
+  const reveal =
+    spring({
+      frame:
+        frame - 8,
+      fps,
+      config: {
+        damping: 15,
+        stiffness: 105
+      }
+    });
+
+  return (
+    <AbsoluteFill>
+      <BaseBackground />
+
+      <StockBackground
+        shot={shot}
+        darken={0.62}
+        blur={1}
+      />
+
+      <Grid
+        opacity={0.05}
+      />
+
+      <AbsoluteFill
+        style={{
+          padding:
+            '78px 92px'
+        }}
+      >
+        <div
+          style={{
+            fontFamily: FONT,
+            color: '#fff',
+            fontWeight: 850,
+            fontSize: 62
           }}
         >
           {getHeadline(shot)}
@@ -1154,916 +841,895 @@ const OfferCardsLayout = ({
 
         <div
           style={{
-            marginTop:
-              90,
-            display:
-              'grid',
+            marginTop: 52,
+            display: 'grid',
             gridTemplateColumns:
-              `repeat(${Math.min(
-                displayCards.length,
-                3
-              )},1fr)`,
-            gap:
-              30
+              '0.95fr 1.05fr',
+            gap: 34,
+            height: 760
           }}
         >
-          {displayCards.map(
-            (
-              card,
-              index
-            ) => (
-              <Card
-                key={`${card}-${index}`}
-                style={{
-                  padding:
-                    38,
-                  height:
-                    320,
-                  transform:
-                    `translateY(${interpolate(
-                      frame,
-                      [
-                        index * 5,
-                        index * 5 + 12
-                      ],
-                      [
-                        45,
-                        0
-                      ],
-                      {
-                        extrapolateLeft:
-                          'clamp',
-                        extrapolateRight:
-                          'clamp'
-                      }
-                    )}px)`
-                }}
-              >
-                <div
-                  style={{
-                    fontSize:
-                      26,
-                    color:
-                      'rgba(255,255,255,0.55)',
-                    fontFamily:
-                      'Arial'
-                  }}
-                >
-                  ENTREGABLE
-                </div>
+          <GlassCard
+            style={{
+              padding: 32,
+              overflow: 'hidden'
+            }}
+          >
+            <BrowserDots />
 
-                <div
-                  style={{
-                    marginTop:
-                      28,
-                    fontSize:
-                      54,
-                    fontWeight:
-                      800,
-                    color:
-                      '#fff',
-                    fontFamily:
-                      'Arial'
-                  }}
-                >
-                  {card}
-                </div>
+            <div
+              style={{
+                marginTop: 30,
+                fontFamily: FONT,
+                fontSize: 26,
+                color:
+                  COLORS.muted,
+                fontWeight: 700
+              }}
+            >
+              NOTAS DE REUNIÓN
+            </div>
 
+            {[
+              'Actualizar propuesta del cliente',
+              'Ana revisará presupuesto',
+              'Falta confirmar fecha',
+              'Preparar resumen ejecutivo',
+              'Enviar siguiente acción'
+            ].map(
+              (
+                label,
+                index
+              ) => (
                 <div
+                  key={label}
                   style={{
-                    marginTop:
-                      36,
-                    height:
-                      6,
-                    width:
-                      '60%',
-                    borderRadius:
-                      10,
+                    marginTop: 24,
+                    padding:
+                      '18px 20px',
+                    borderRadius: 14,
                     background:
-                      'rgba(90,110,255,0.65)'
+                      'rgba(255,255,255,0.055)',
+                    color: '#fff',
+                    fontFamily: FONT,
+                    fontSize: 28,
+                    opacity:
+                      0.72 +
+                      index * 0.05
                   }}
-                />
-              </Card>
-            )
-          )}
+                >
+                  {label}
+                </div>
+              )
+            )}
+          </GlassCard>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateRows:
+                'repeat(3,1fr)',
+              gap: 22,
+              opacity: reveal,
+              transform:
+                `translateX(${(1 - reveal) * 60}px)`
+            }}
+          >
+            {[
+              {
+                title: 'ENTRADA',
+                text:
+                  'Notas, nombres y contexto'
+              },
+              {
+                title: 'RESULTADO',
+                text:
+                  'Resumen, decisiones y tareas'
+              },
+              {
+                title: 'LÍMITES',
+                text:
+                  'No inventar datos ausentes'
+              }
+            ].map(
+              (
+                item,
+                index
+              ) => (
+                <GlassCard
+                  key={item.title}
+                  style={{
+                    padding: 30,
+                    borderLeft:
+                      `5px solid ${
+                        [
+                          COLORS.blue,
+                          COLORS.green,
+                          COLORS.amber
+                        ][index]
+                      }`
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: FONT,
+                      color:
+                        COLORS.muted,
+                      fontWeight: 800,
+                      fontSize: 23
+                    }}
+                  >
+                    {item.title}
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 16,
+                      fontFamily: FONT,
+                      color: '#fff',
+                      fontWeight: 800,
+                      fontSize: 36
+                    }}
+                  >
+                    {item.text}
+                  </div>
+                </GlassCard>
+              )
+            )}
+          </div>
         </div>
       </AbsoluteFill>
     </AbsoluteFill>
   );
 };
 
-const AIProcessingUILayout = ({
+
+// ======================================================
+// 4. GEMINI GEM SETUP
+// ======================================================
+
+const GeminiGemSetup = ({
   shot
 }) => {
+
   const frame =
     useCurrentFrame();
 
-  const progress =
-    interpolate(
-      frame,
-      [
-        0,
-        Math.max(
-          1,
-          shot?.durationFrames || 1
-        )
-      ],
-      [
-        0.08,
-        0.92
-      ],
-      {
-        extrapolateRight:
-          'clamp'
-      }
+  const duration =
+    getDurationFrames(shot);
+
+  const step =
+    clamp(
+      Math.floor(
+        (
+          frame /
+          duration
+        ) *
+        3
+      ),
+      0,
+      2
     );
 
   return (
     <AbsoluteFill>
-      <SoftGrid
+      <BaseBackground />
+
+      <Grid
+        opacity={0.07}
+      />
+
+      <AmbientGlow
+        left="70%"
+        top="38%"
+        color="109,124,255"
+        opacity={0.16}
+      />
+
+      <AbsoluteFill
+        style={{
+          padding:
+            '70px 90px'
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent:
+              'space-between'
+          }}
+        >
+          <div
+            style={{
+              fontFamily: FONT,
+              fontSize: 58,
+              color: '#fff',
+              fontWeight: 850
+            }}
+          >
+            Construye una Gem útil
+          </div>
+
+          <Badge>
+            GEMINI
+          </Badge>
+        </div>
+
+        <GlassCard
+          style={{
+            marginTop: 38,
+            height: 800,
+            overflow: 'hidden'
+          }}
+        >
+          <div
+            style={{
+              height: 70,
+              borderBottom:
+                `1px solid ${COLORS.border}`,
+              padding:
+                '0 28px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent:
+                'space-between'
+            }}
+          >
+            <BrowserDots />
+
+            <div
+              style={{
+                fontFamily: FONT,
+                color:
+                  COLORS.muted,
+                fontSize: 22
+              }}
+            >
+              Gemini · Gems
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns:
+                '320px 1fr',
+              height: 730
+            }}
+          >
+            <div
+              style={{
+                borderRight:
+                  `1px solid ${COLORS.border}`,
+                padding: 28
+              }}
+            >
+              {[
+                'Nueva Gem',
+                'Mis Gems',
+                'Actividad'
+              ].map(
+                (
+                  label,
+                  index
+                ) => (
+                  <div
+                    key={label}
+                    style={{
+                      marginTop:
+                        index === 0
+                          ? 0
+                          : 14,
+                      padding:
+                        '17px 18px',
+                      borderRadius: 14,
+                      background:
+                        index === 0
+                          ? 'rgba(109,124,255,0.20)'
+                          : 'transparent',
+                      color: '#fff',
+                      fontFamily: FONT,
+                      fontSize: 25,
+                      fontWeight:
+                        index === 0
+                          ? 800
+                          : 600
+                    }}
+                  >
+                    {label}
+                  </div>
+                )
+              )}
+            </div>
+
+            <div
+              style={{
+                padding:
+                  '34px 42px'
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: FONT,
+                  color:
+                    COLORS.muted,
+                  fontSize: 22
+                }}
+              >
+                NOMBRE
+              </div>
+
+              <div
+                style={{
+                  marginTop: 12,
+                  padding:
+                    '18px 20px',
+                  borderRadius: 14,
+                  background:
+                    'rgba(255,255,255,0.055)',
+                  border:
+                    step === 0
+                      ? `2px solid ${COLORS.blue}`
+                      : `1px solid ${COLORS.border}`,
+                  color: '#fff',
+                  fontFamily: FONT,
+                  fontSize: 30
+                }}
+              >
+                Asistente de reuniones
+              </div>
+
+              <div
+                style={{
+                  marginTop: 34,
+                  fontFamily: FONT,
+                  color:
+                    COLORS.muted,
+                  fontSize: 22
+                }}
+              >
+                INSTRUCCIONES
+              </div>
+
+              <div
+                style={{
+                  marginTop: 12,
+                  height: 280,
+                  padding:
+                    '20px 22px',
+                  borderRadius: 14,
+                  background:
+                    'rgba(255,255,255,0.045)',
+                  border:
+                    step === 1
+                      ? `2px solid ${COLORS.green}`
+                      : `1px solid ${COLORS.border}`,
+                  color: '#fff',
+                  fontFamily: FONT,
+                  fontSize: 27,
+                  lineHeight: 1.45
+                }}
+              >
+                Recibe notas de una reunión.
+                Resume las decisiones.
+                Extrae responsables y próximas tareas.
+                No inventes información que no aparezca.
+              </div>
+
+              <div
+                style={{
+                  marginTop: 28,
+                  display: 'flex',
+                  justifyContent:
+                    'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <div
+                  style={{
+                    color:
+                      COLORS.muted,
+                    fontFamily: FONT,
+                    fontSize: 23
+                  }}
+                >
+                  Prueba la Gem antes de usarla
+                </div>
+
+                <div
+                  style={{
+                    padding:
+                      '16px 30px',
+                    borderRadius: 14,
+                    background:
+                      step === 2
+                        ? COLORS.green
+                        : COLORS.blue,
+                    color: '#fff',
+                    fontFamily: FONT,
+                    fontSize: 26,
+                    fontWeight: 850,
+                    boxShadow:
+                      '0 10px 34px rgba(109,124,255,.24)'
+                  }}
+                >
+                  Guardar y probar
+                </div>
+              </div>
+            </div>
+          </div>
+        </GlassCard>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+
+// ======================================================
+// 5. GEMINI VS CLAUDE
+// ======================================================
+
+const DualToolComparison = ({
+  shot
+}) => {
+
+  const frame =
+    useCurrentFrame();
+
+  const {fps} =
+    useVideoConfig();
+
+  const left =
+    spring({
+      frame,
+      fps,
+      config: {
+        damping: 15,
+        stiffness: 100
+      }
+    });
+
+  const right =
+    spring({
+      frame:
+        frame - 6,
+      fps,
+      config: {
+        damping: 15,
+        stiffness: 100
+      }
+    });
+
+  return (
+    <AbsoluteFill>
+      <BaseBackground />
+
+      <Grid
+        opacity={0.06}
+      />
+
+      <AbsoluteFill
+        style={{
+          padding:
+            '70px 80px'
+        }}
+      >
+        <div
+          style={{
+            fontFamily: FONT,
+            color: '#fff',
+            fontSize: 58,
+            fontWeight: 850,
+            textAlign: 'center'
+          }}
+        >
+          Gemini Gems vs Claude Cowork
+        </div>
+
+        <div
+          style={{
+            marginTop: 44,
+            display: 'grid',
+            gridTemplateColumns:
+              '1fr 1fr',
+            gap: 30
+          }}
+        >
+          <GlassCard
+            style={{
+              height: 790,
+              padding: 32,
+              transform:
+                `translateX(${(1 - left) * -80}px)`,
+              opacity: left
+            }}
+          >
+            <Badge
+              color={COLORS.blue}
+            >
+              GEMINI GEMS
+            </Badge>
+
+            <div
+              style={{
+                marginTop: 34,
+                fontFamily: FONT,
+                color: '#fff',
+                fontSize: 42,
+                fontWeight: 850
+              }}
+            >
+              Instrucciones reutilizables
+            </div>
+
+            <div
+              style={{
+                marginTop: 36
+              }}
+            >
+              <CheckRow
+                text="Configura una vez"
+              />
+
+              <CheckRow
+                text="Repite el mismo criterio"
+              />
+
+              <CheckRow
+                text="Ideal para asistentes"
+              />
+
+              <CheckRow
+                text="Entrada → respuesta"
+              />
+            </div>
+
+            <div
+              style={{
+                marginTop: 55,
+                height: 190,
+                borderRadius: 18,
+                background:
+                  'linear-gradient(135deg,rgba(109,124,255,.25),rgba(41,211,255,.08))',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <div
+                style={{
+                  color: '#fff',
+                  fontFamily: FONT,
+                  fontSize: 30,
+                  fontWeight: 800
+                }}
+              >
+                GEM → RESPUESTA
+              </div>
+            </div>
+          </GlassCard>
+
+          <GlassCard
+            style={{
+              height: 790,
+              padding: 32,
+              transform:
+                `translateX(${(1 - right) * 80}px)`,
+              opacity: right
+            }}
+          >
+            <Badge
+              color={COLORS.green}
+            >
+              CLAUDE COWORK
+            </Badge>
+
+            <div
+              style={{
+                marginTop: 34,
+                fontFamily: FONT,
+                color: '#fff',
+                fontSize: 42,
+                fontWeight: 850
+              }}
+            >
+              Flujo con archivos
+            </div>
+
+            <div
+              style={{
+                marginTop: 36
+              }}
+            >
+              <CheckRow
+                text="Trabaja con documentos"
+              />
+
+              <CheckRow
+                text="Secuencia varias acciones"
+              />
+
+              <CheckRow
+                text="Ideal para procesos"
+              />
+
+              <CheckRow
+                text="Archivo → acción → entrega"
+              />
+            </div>
+
+            <div
+              style={{
+                marginTop: 55,
+                height: 190,
+                borderRadius: 18,
+                background:
+                  'linear-gradient(135deg,rgba(22,221,178,.22),rgba(255,189,89,.08))',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <div
+                style={{
+                  color: '#fff',
+                  fontFamily: FONT,
+                  fontSize: 30,
+                  fontWeight: 800
+                }}
+              >
+                ARCHIVOS → FLUJO
+              </div>
+            </div>
+          </GlassCard>
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+
+// ======================================================
+// 6. VALIDATION / BEFORE AFTER
+// ======================================================
+
+const BeforeAfterValidation = ({
+  shot
+}) => {
+
+  const frame =
+    useCurrentFrame();
+
+  const {fps} =
+    useVideoConfig();
+
+  const reveal =
+    spring({
+      frame:
+        frame - 10,
+      fps,
+      config: {
+        damping: 15,
+        stiffness: 105
+      }
+    });
+
+  return (
+    <AbsoluteFill>
+      <BaseBackground />
+
+      <Grid
         opacity={0.07}
       />
 
       <AbsoluteFill
         style={{
           padding:
-            '85px 105px'
-        }}
-      >
-        <Card
-          style={{
-            width:
-              '100%',
-            height:
-              '100%',
-            padding:
-              34
-          }}
-        >
-          <BrowserChrome />
-
-          <div
-            style={{
-              display:
-                'grid',
-              gridTemplateColumns:
-                '1.2fr .8fr',
-              gap:
-                30,
-              height:
-                '76%'
-            }}
-          >
-            <div
-              style={{
-                padding:
-                  28,
-                borderRadius:
-                  18,
-                background:
-                  'rgba(255,255,255,0.035)'
-              }}
-            >
-              <div
-                style={{
-                  color:
-                    'rgba(255,255,255,0.55)',
-                  fontFamily:
-                    'Arial',
-                  fontSize:
-                    22
-                }}
-              >
-                TRANSCRIPCIÓN
-              </div>
-
-              {[
-                82,
-                68,
-                92,
-                73,
-                88,
-                62,
-                78
-              ].map(
-                (
-                  width,
-                  index
-                ) => {
-                  const active =
-                    index ===
-                    Math.floor(
-                      (
-                        frame /
-                        16
-                      ) %
-                      7
-                    );
-
-                  return (
-                    <div
-                      key={index}
-                      style={{
-                        marginTop:
-                          20,
-                        width:
-                          `${width}%`,
-                        height:
-                          18,
-                        borderRadius:
-                          8,
-                        background:
-                          active
-                            ? 'rgba(90,110,255,0.75)'
-                            : 'rgba(255,255,255,0.13)',
-                        boxShadow:
-                          active
-                            ? '0 0 26px rgba(90,110,255,.32)'
-                            : 'none'
-                      }}
-                    />
-                  );
-                }
-              )}
-            </div>
-
-            <div
-              style={{
-                display:
-                  'flex',
-                flexDirection:
-                  'column',
-                gap:
-                  22
-              }}
-            >
-              <Card
-                style={{
-                  flex:
-                    1,
-                  padding:
-                    28
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily:
-                      'Arial',
-                    color:
-                      'rgba(255,255,255,.55)',
-                    fontSize:
-                      22
-                  }}
-                >
-                  IA
-                </div>
-
-                <div
-                  style={{
-                    marginTop:
-                      18,
-                    fontFamily:
-                      'Arial',
-                    color:
-                      '#fff',
-                    fontSize:
-                      44,
-                    fontWeight:
-                      800
-                  }}
-                >
-                  Analizando momentos
-                </div>
-
-                <div
-                  style={{
-                    marginTop:
-                      34,
-                    height:
-                      10,
-                    borderRadius:
-                      10,
-                    background:
-                      'rgba(255,255,255,.08)',
-                    overflow:
-                      'hidden'
-                  }}
-                >
-                  <div
-                    style={{
-                      width:
-                        `${progress * 100}%`,
-                      height:
-                        '100%',
-                      background:
-                        'linear-gradient(90deg,rgba(90,110,255,.95),rgba(0,220,180,.85))'
-                    }}
-                  />
-                </div>
-              </Card>
-
-              <Card
-                style={{
-                  height:
-                    165,
-                  padding:
-                    28
-                }}
-              >
-                <div
-                  style={{
-                    color:
-                      '#fff',
-                    fontFamily:
-                      'Arial',
-                    fontSize:
-                      28,
-                    fontWeight:
-                      700
-                  }}
-                >
-                  3 clips sugeridos
-                </div>
-              </Card>
-            </div>
-          </div>
-        </Card>
-      </AbsoluteFill>
-    </AbsoluteFill>
-  );
-};
-
-const BeforeAfterReviewLayout = ({
-  shot
-}) => {
-  const frame =
-    useCurrentFrame();
-
-  const reveal =
-    interpolate(
-      frame,
-      [0, 22],
-      [0, 1],
-      {
-        extrapolateRight:
-          'clamp'
-      }
-    );
-
-  return (
-    <AbsoluteFill>
-      <SoftGrid
-        opacity={0.08}
-      />
-
-      <AbsoluteFill
-        style={{
-          padding:
-            '95px 115px'
+            '78px 88px'
         }}
       >
         <div
           style={{
-            fontSize:
-              60,
-            fontWeight:
-              800,
-            color:
-              '#fff',
-            fontFamily:
-              'Arial'
+            fontFamily: FONT,
+            color: '#fff',
+            fontSize: 58,
+            fontWeight: 850
           }}
         >
-          {getHeadline(shot)}
+          Prueba, revisa y mejora
         </div>
 
         <div
           style={{
-            marginTop:
-              70,
-            display:
-              'grid',
+            marginTop: 50,
+            display: 'grid',
             gridTemplateColumns:
               '1fr 1fr',
-            gap:
-              38
+            gap: 28
           }}
         >
-          <Card
+          <GlassCard
             style={{
-              padding:
-                34,
-              height:
-                570
+              height: 730,
+              padding: 32
             }}
           >
+            <Badge
+              color={COLORS.red}
+            >
+              PRUEBA 1
+            </Badge>
+
             <div
               style={{
-                fontSize:
-                  26,
-                color:
-                  'rgba(255,255,255,.55)',
-                fontFamily:
-                  'Arial'
+                marginTop: 28,
+                color: '#fff',
+                fontFamily: FONT,
+                fontSize: 38,
+                fontWeight: 800
               }}
             >
-              ANTES
+              Instrucción incompleta
             </div>
 
             <div
               style={{
-                marginTop:
-                  38,
-                fontSize:
-                  46,
-                lineHeight:
-                  1.3,
-                fontWeight:
-                  700,
-                color:
-                  '#fff',
-                fontFamily:
-                  'Arial'
-              }}
-            >
-              Texto con errores, saltos y subtítulos poco naturales.
-            </div>
-
-            {[0, 1, 2].map(
-              (
-                index
-              ) => (
-                <div
-                  key={index}
-                  style={{
-                    marginTop:
-                      30,
-                    height:
-                      4,
-                    width:
-                      `${75 - index * 9}%`,
-                    background:
-                      'rgba(255,110,110,.65)'
-                  }}
-                />
-              )
-            )}
-          </Card>
-
-          <Card
-            style={{
-              padding:
-                34,
-              height:
-                570,
-              opacity:
-                reveal,
-              transform:
-                `translateX(${(1 - reveal) * 45}px)`
-            }}
-          >
-            <div
-              style={{
-                fontSize:
-                  26,
-                color:
-                  'rgba(255,255,255,.55)',
-                fontFamily:
-                  'Arial'
-              }}
-            >
-              DESPUÉS
-            </div>
-
-            <div
-              style={{
-                marginTop:
-                  38,
-                fontSize:
-                  46,
-                lineHeight:
-                  1.3,
-                fontWeight:
-                  700,
-                color:
-                  '#fff',
-                fontFamily:
-                  'Arial'
-              }}
-            >
-              Texto limpio, revisado y preparado para publicar.
-            </div>
-
-            {[0, 1, 2].map(
-              (
-                index
-              ) => (
-                <div
-                  key={index}
-                  style={{
-                    marginTop:
-                      30,
-                    height:
-                      4,
-                    width:
-                      `${82 - index * 7}%`,
-                    background:
-                      'rgba(0,220,180,.70)'
-                  }}
-                />
-              )
-            )}
-          </Card>
-        </div>
-      </AbsoluteFill>
-    </AbsoluteFill>
-  );
-};
-
-const OutreachWorkspaceLayout = ({
-  shot
-}) => {
-  const frame =
-    useCurrentFrame();
-
-  const mediaUrl =
-    getVisualAssetUrl(shot);
-
-  return (
-    <AbsoluteFill>
-      {mediaUrl
-        ? (
-          <Video
-            src={mediaUrl}
-            muted
-            style={{
-              width:
-                '100%',
-              height:
-                '100%',
-              objectFit:
-                'cover'
-            }}
-          />
-        )
-        : (
-          <AbsoluteFill>
-            <SoftGrid
-              opacity={0.08}
-            />
-
-            <AbsoluteFill
-              style={{
+                marginTop: 28,
                 padding:
-                  '100px 120px',
-                display:
-                  'grid',
-                gridTemplateColumns:
-                  '1.1fr .9fr',
-                gap:
-                  38
+                  '22px 24px',
+                borderRadius: 18,
+                background:
+                  'rgba(255,104,116,0.08)',
+                border:
+                  '1px solid rgba(255,104,116,0.32)',
+                color: '#fff',
+                fontFamily: FONT,
+                fontSize: 28,
+                lineHeight: 1.4
               }}
             >
-              <Card
-                style={{
-                  padding:
-                    34
-                }}
-              >
-                <BrowserChrome />
+              “Hazme un resumen de estas notas.”
+            </div>
 
-                <div
-                  style={{
-                    fontSize:
-                      28,
-                    color:
-                      'rgba(255,255,255,.55)',
-                    fontFamily:
-                      'Arial'
-                  }}
-                >
-                  MENSAJE PERSONALIZADO
-                </div>
+            <div
+              style={{
+                marginTop: 38
+              }}
+            >
+              <CheckRow
+                text="Formato poco claro"
+                active={false}
+              />
 
-                <div
-                  style={{
-                    marginTop:
-                      32,
-                    fontSize:
-                      42,
-                    lineHeight:
-                      1.35,
-                    color:
-                      '#fff',
-                    fontFamily:
-                      'Arial',
-                    fontWeight:
-                      700
-                  }}
-                >
-                  “He preparado una muestra de cómo podría quedar uno de tus clips.”
-                </div>
+              <CheckRow
+                text="Datos ausentes"
+                active={false}
+              />
 
-                <div
-                  style={{
-                    marginTop:
-                      50,
-                    width:
-                      180,
-                    padding:
-                      '16px 22px',
-                    borderRadius:
-                      14,
-                    background:
-                      'rgba(90,110,255,.65)',
-                    color:
-                      '#fff',
-                    fontFamily:
-                      'Arial',
-                    fontSize:
-                      26,
-                    fontWeight:
-                      700,
-                    transform:
-                      `scale(${1 + Math.sin(
-                        frame / 10
-                      ) * 0.025})`
-                  }}
-                >
-                  ENVIAR
-                </div>
-              </Card>
+              <CheckRow
+                text="Resultado inconsistente"
+                active={false}
+              />
+            </div>
+          </GlassCard>
 
-              <Card
-                style={{
-                  padding:
-                    28
-                }}
-              >
-                <div
-                  style={{
-                    height:
-                      330,
-                    borderRadius:
-                      18,
-                    background:
-                      'linear-gradient(135deg,rgba(90,110,255,.22),rgba(0,220,180,.10))'
-                  }}
-                />
-
-                <div
-                  style={{
-                    marginTop:
-                      26,
-                    fontSize:
-                      30,
-                    color:
-                      '#fff',
-                    fontFamily:
-                      'Arial',
-                    fontWeight:
-                      700
-                  }}
-                >
-                  Vista previa del clip
-                </div>
-              </Card>
-            </AbsoluteFill>
-          </AbsoluteFill>
-        )}
-
-      {mediaUrl
-        ? (
-          <AbsoluteFill
+          <GlassCard
             style={{
-              background:
-                'linear-gradient(90deg,rgba(5,8,15,.78),rgba(5,8,15,.10))'
-            }}
-          />
-        )
-        : null}
-
-      {mediaUrl
-        ? (
-          <div
-            style={{
-              position:
-                'absolute',
-              left:
-                110,
-              bottom:
-                90,
-              maxWidth:
-                1000,
-              color:
-                '#fff',
-              fontSize:
-                56,
-              fontWeight:
-                800,
-              fontFamily:
-                'Arial'
+              height: 730,
+              padding: 32,
+              opacity: reveal,
+              transform:
+                `translateX(${(1 - reveal) * 55}px)`
             }}
           >
-            {getHeadline(shot)}
-          </div>
-        )
-        : null}
-    </AbsoluteFill>
-  );
-};
+            <Badge
+              color={COLORS.green}
+            >
+              PRUEBA 2
+            </Badge>
 
-const WorkflowMapLayout = ({
-  shot
-}) => {
-  const frame =
-    useCurrentFrame();
+            <div
+              style={{
+                marginTop: 28,
+                color: '#fff',
+                fontFamily: FONT,
+                fontSize: 38,
+                fontWeight: 800
+              }}
+            >
+              Instrucción precisa
+            </div>
 
-  const steps = [
-    'FORMULARIO',
-    'TRANSCRIPCIÓN',
-    'IA',
-    'REVISIÓN',
-    'ENTREGA'
-  ];
+            <div
+              style={{
+                marginTop: 28,
+                padding:
+                  '22px 24px',
+                borderRadius: 18,
+                background:
+                  'rgba(22,221,178,0.07)',
+                border:
+                  '1px solid rgba(22,221,178,0.32)',
+                color: '#fff',
+                fontFamily: FONT,
+                fontSize: 27,
+                lineHeight: 1.4
+              }}
+            >
+              “Resume decisiones, responsables y tareas.
+              Si falta información, indícalo.”
+            </div>
 
-  return (
-    <AbsoluteFill>
-      <SoftGrid
-        opacity={0.1}
-      />
+            <div
+              style={{
+                marginTop: 38
+              }}
+            >
+              <CheckRow
+                text="Formato definido"
+              />
 
-      <Glow
-        x="55%"
-        y="55%"
-        size={950}
-        opacity={0.12}
-      />
+              <CheckRow
+                text="Sin inventar datos"
+              />
 
-      <AbsoluteFill
-        style={{
-          padding:
-            '105px 110px'
-        }}
-      >
-        <div
-          style={{
-            fontSize:
-              64,
-            fontWeight:
-              800,
-            color:
-              '#fff',
-            fontFamily:
-              'Arial'
-          }}
-        >
-          {getHeadline(shot)}
-        </div>
-
-        <div
-          style={{
-            marginTop:
-              145,
-            display:
-              'flex',
-            alignItems:
-              'center',
-            justifyContent:
-              'space-between'
-          }}
-        >
-          {steps.map(
-            (
-              step,
-              index
-            ) => {
-              const active =
-                frame >
-                index * 10;
-
-              return (
-                <React.Fragment
-                  key={step}
-                >
-                  <Card
-                    style={{
-                      width:
-                        250,
-                      height:
-                        180,
-                      display:
-                        'flex',
-                      flexDirection:
-                        'column',
-                      alignItems:
-                        'center',
-                      justifyContent:
-                        'center',
-                      background:
-                        active
-                          ? 'linear-gradient(145deg,rgba(90,110,255,.32),rgba(10,15,27,.95))'
-                          : undefined,
-                      boxShadow:
-                        active
-                          ? '0 0 42px rgba(90,110,255,.20)'
-                          : undefined
-                    }}
-                  >
-                    <div
-                      style={{
-                        width:
-                          42,
-                        height:
-                          42,
-                        borderRadius:
-                          12,
-                        background:
-                          active
-                            ? 'rgba(0,220,180,.75)'
-                            : 'rgba(255,255,255,.12)'
-                      }}
-                    />
-
-                    <div
-                      style={{
-                        marginTop:
-                          22,
-                        color:
-                          '#fff',
-                        fontFamily:
-                          'Arial',
-                        fontSize:
-                          24,
-                        fontWeight:
-                          800,
-                        textAlign:
-                          'center'
-                      }}
-                    >
-                      {step}
-                    </div>
-                  </Card>
-
-                  {index <
-                  steps.length - 1
-                    ? (
-                      <div
-                        style={{
-                          color:
-                            'rgba(255,255,255,.45)',
-                          fontSize:
-                            48
-                        }}
-                      >
-                        →
-                      </div>
-                    )
-                    : null}
-                </React.Fragment>
-              );
-            }
-          )}
+              <CheckRow
+                text="Resultado reutilizable"
+              />
+            </div>
+          </GlassCard>
         </div>
       </AbsoluteFill>
     </AbsoluteFill>
   );
 };
 
-const CTAEndcardLayout = ({
+
+// ======================================================
+// 7. CTA
+// ======================================================
+
+const CTAEndcard = ({
   shot
 }) => {
+
   const frame =
     useCurrentFrame();
 
-  const {
-    fps
-  } =
+  const {fps} =
     useVideoConfig();
 
-  const pulse =
+  const pop =
     spring({
       frame,
       fps,
       config: {
-        damping:
-          12,
-        stiffness:
-          95
+        damping: 14,
+        stiffness: 100
       }
     });
 
   return (
     <AbsoluteFill>
-      <SoftGrid
-        opacity={0.09}
+      <BaseBackground />
+
+      <StockBackground
+        shot={shot}
+        darken={0.70}
+        blur={2}
       />
 
-      <Glow
-        x="50%"
-        y="50%"
-        size={1100}
-        opacity={0.16}
+      <Grid
+        opacity={0.05}
+      />
+
+      <AmbientGlow
+        left="50%"
+        top="48%"
+        size={1150}
+        color="109,124,255"
+        opacity={0.18}
       />
 
       <AbsoluteFill
@@ -2073,188 +1739,86 @@ const CTAEndcardLayout = ({
           alignItems:
             'center',
           padding:
-            '140px'
+            '110px'
         }}
       >
-        <div
+        <GlassCard
           style={{
-            textAlign:
-              'center',
-            maxWidth:
-              1350
+            width: 1180,
+            padding:
+              '54px 70px',
+            textAlign: 'center',
+            transform:
+              `scale(${0.95 + pop * 0.05})`
           }}
         >
           <div
             style={{
-              fontSize:
-                82,
-              fontWeight:
-                800,
-              lineHeight:
-                1.08,
-              color:
-                '#fff',
-              fontFamily:
-                'Arial',
-              transform:
-                `scale(${0.96 + pulse * 0.04})`
+              fontFamily: FONT,
+              color: '#fff',
+              fontSize: 66,
+              lineHeight: 1.05,
+              fontWeight: 850
             }}
           >
-            {getHeadline(shot)}
+            ¿Qué tarea convertirías primero en una Gem?
           </div>
 
-          <Card
+          <div
             style={{
               margin:
-                '70px auto 0',
-              width:
-                760,
+                '44px auto 0',
+              width: 760,
               padding:
-                '28px 34px',
-              fontSize:
-                34,
-              fontWeight:
-                700,
+                '20px 28px',
+              borderRadius: 18,
+              background:
+                'rgba(255,255,255,0.07)',
+              border:
+                `1px solid ${COLORS.border}`,
               color:
-                '#fff',
-              fontFamily:
-                'Arial'
+                COLORS.muted,
+              fontFamily: FONT,
+              fontSize: 30,
+              textAlign: 'left'
             }}
           >
-            ¿Qué tarea repetitiva automatizarías primero?
-          </Card>
-        </div>
+            Escribe tu respuesta en comentarios...
+            <span
+              style={{
+                opacity:
+                  frame % 20 < 10
+                    ? 1
+                    : 0
+              }}
+            >
+              |
+            </span>
+          </div>
+        </GlassCard>
       </AbsoluteFill>
     </AbsoluteFill>
   );
 };
 
-const KineticTypographyLayout = ({
-  shot
-}) => {
-  const frame =
-    useCurrentFrame();
 
-  const {
-    fps
-  } =
-    useVideoConfig();
+// ======================================================
+// GENERIC FALLBACK
+// ======================================================
 
-  const kinetic =
-    shot?.graphicElements?.find(
-      (
-        element
-      ) =>
-        element.type ===
-        'kinetic_words'
-    );
-
-  const words =
-    kinetic?.words ||
-    shot?.captionPlan
-      ?.highlightKeywords ||
-    [];
-
-  return (
-    <AbsoluteFill>
-      <SoftGrid
-        opacity={0.1}
-      />
-
-      <AbsoluteFill
-        style={{
-          justifyContent:
-            'center',
-          alignItems:
-            'center',
-          flexDirection:
-            'row',
-          flexWrap:
-            'wrap',
-          gap:
-            28,
-          padding:
-            150
-        }}
-      >
-        {words.map(
-          (
-            word,
-            index
-          ) => {
-            const start =
-              index * 6;
-
-            const animation =
-              spring({
-                frame:
-                  frame - start,
-                fps,
-                config: {
-                  damping:
-                    13,
-                  stiffness:
-                    150
-                }
-              });
-
-            const visible =
-              frame >=
-              start;
-
-            return (
-              <div
-                key={`${word}-${index}`}
-                style={{
-                  opacity:
-                    visible
-                      ? 1
-                      : 0,
-                  transform:
-                    `scale(${0.75 + animation * 0.25})`,
-                  fontFamily:
-                    'Arial, Helvetica, sans-serif',
-                  fontSize:
-                    84,
-                  fontWeight:
-                    800,
-                  color:
-                    '#ffffff',
-                  textTransform:
-                    'uppercase',
-                  padding:
-                    '12px 22px',
-                  borderRadius:
-                    18,
-                  background:
-                    index % 2 === 0
-                      ? 'rgba(255,255,255,0.08)'
-                      : 'transparent'
-                }}
-              >
-                {word}
-              </div>
-            );
-          }
-        )}
-      </AbsoluteFill>
-    </AbsoluteFill>
-  );
-};
-
-const GenericLayout = ({
+const GenericVisual = ({
   shot
 }) => (
   <AbsoluteFill>
-    <SoftGrid
-      opacity={0.08}
+    <BaseBackground />
+
+    <StockBackground
+      shot={shot}
+      darken={0.58}
     />
 
-    <Glow
-      x="50%"
-      y="50%"
-      size={900}
-      opacity={0.1}
+    <Grid
+      opacity={0.07}
     />
 
     <AbsoluteFill
@@ -2264,187 +1828,326 @@ const GenericLayout = ({
         alignItems:
           'center',
         padding:
-          120
+          '110px'
       }}
     >
-      <Card
+      <GlassCard
         style={{
           maxWidth:
             1250,
           padding:
-            '56px 68px'
+            '48px 60px'
         }}
       >
         <div
           style={{
-            fontFamily:
-              'Arial, Helvetica, sans-serif',
-            fontSize:
-              70,
-            fontWeight:
-              800,
-            color:
-              '#ffffff',
+            fontFamily: FONT,
+            color: '#fff',
+            fontSize: 66,
+            fontWeight: 850,
+            lineHeight: 1.07,
             textAlign:
-              'center',
-            lineHeight:
-              1.08
+              'center'
           }}
         >
           {getHeadline(shot)}
         </div>
-      </Card>
+      </GlassCard>
     </AbsoluteFill>
   </AbsoluteFill>
 );
 
+
+// ======================================================
+// SHOT RENDERER
+// ======================================================
+
 const ShotRenderer = ({
   shot
 }) => {
+
+  const template =
+    getTemplate(shot);
+
   const layout =
     getLayout(shot);
 
-  switch (
-    layout
-  ) {
-    case 'hero_fullscreen':
+  switch (template) {
+
+    case 'hook_transformation':
       return (
-        <HeroLayout
+        <HookTransformation
           shot={shot}
         />
       );
 
-    case 'screen_focus':
+    case 'intro_problem_solution':
       return (
-        <ScreenFocusLayout
+        <StockPlusUI
           shot={shot}
         />
       );
 
-    case 'split_graphic':
+    case 'notes_to_structure':
       return (
-        <SplitGraphicLayout
+        <NotesToStructure
           shot={shot}
         />
       );
 
-    case 'full_bleed_media':
+    case 'gemini_gem_setup':
       return (
-        <FullBleedMediaLayout
+        <GeminiGemSetup
           shot={shot}
         />
       );
 
-    case 'kinetic_typography':
+    case 'dual_tool_comparison':
       return (
-        <KineticTypographyLayout
+        <DualToolComparison
           shot={shot}
         />
       );
 
-    case 'timeline_transform':
+    case 'before_after_validation':
       return (
-        <TimelineTransformLayout
-          shot={shot}
-        />
-      );
-
-    case 'editor_workspace':
-      return (
-        <EditorWorkspaceLayout
-          shot={shot}
-        />
-      );
-
-    case 'offer_cards':
-      return (
-        <OfferCardsLayout
-          shot={shot}
-        />
-      );
-
-    case 'ai_processing_ui':
-      return (
-        <AIProcessingUILayout
-          shot={shot}
-        />
-      );
-
-    case 'before_after_review':
-      return (
-        <BeforeAfterReviewLayout
-          shot={shot}
-        />
-      );
-
-    case 'outreach_workspace':
-      return (
-        <OutreachWorkspaceLayout
-          shot={shot}
-        />
-      );
-
-    case 'workflow_map':
-      return (
-        <WorkflowMapLayout
+        <BeforeAfterValidation
           shot={shot}
         />
       );
 
     case 'cta_endcard':
       return (
-        <CTAEndcardLayout
+        <CTAEndcard
           shot={shot}
         />
       );
 
-    case 'hybrid_context':
+    default:
+      break;
+  }
+
+
+  switch (layout) {
+
+    case 'dynamic_problem_solution':
       return (
-        <SplitGraphicLayout
+        <HookTransformation
+          shot={shot}
+        />
+      );
+
+    case 'stock_background_with_ui_overlay':
+      return (
+        <StockPlusUI
+          shot={shot}
+        />
+      );
+
+    case 'split_context_and_output':
+      return (
+        <NotesToStructure
+          shot={shot}
+        />
+      );
+
+    case 'full_ui_with_detail_zoom':
+      return (
+        <GeminiGemSetup
+          shot={shot}
+        />
+      );
+
+    case 'split_screen_50_50':
+      return (
+        <DualToolComparison
+          shot={shot}
+        />
+      );
+
+    case 'test_review_improve':
+      return (
+        <BeforeAfterValidation
+          shot={shot}
+        />
+      );
+
+    case 'centered_cta_with_background':
+      return (
+        <CTAEndcard
           shot={shot}
         />
       );
 
     default:
       return (
-        <GenericLayout
+        <GenericVisual
           shot={shot}
         />
       );
   }
 };
 
-const YouTubeV4 = ({
-  timelineShots = []
-}) => (
-  <AbsoluteFill>
-    <Background />
 
-    {timelineShots.map(
+// ======================================================
+// NORMALIZE INPUT
+//
+// Compatible con:
+// - timelineShots
+// - scene
+// - scenes
+// - visual
+// ======================================================
+
+const normalizeShots = ({
+  timelineShots = [],
+  scenes = [],
+  scene = null,
+  visual = null
+}) => {
+
+  if (
+    Array.isArray(timelineShots) &&
+    timelineShots.length > 0
+  ) {
+
+    return timelineShots.map(
+      (shot) => {
+
+        const matchingScene =
+          safeArray(scenes).find(
+            (item) =>
+              item?.sceneId ===
+              shot?.sceneId
+          );
+
+        return {
+          ...(matchingScene || {}),
+          ...(scene || {}),
+          ...shot,
+          visual:
+            visual ||
+            shot?.visual ||
+            null
+        };
+      }
+    );
+  }
+
+
+  if (scene) {
+
+    return [
+      {
+        ...scene,
+        visual:
+          visual || null,
+        startFrame: 0,
+        durationFrames:
+          scene?.durationFrames ||
+          300
+      }
+    ];
+  }
+
+
+  if (
+    Array.isArray(scenes) &&
+    scenes.length > 0
+  ) {
+
+    return scenes.map(
       (
-        shot
-      ) => (
-        <Sequence
-          key={
-            shot.shotId
-          }
-          from={
-            shot.startFrame
-          }
-          durationInFrames={
-            shot.durationFrames
-          }
-        >
-          <ShotRenderer
-            shot={shot}
-          />
-        </Sequence>
-      )
-    )}
-  </AbsoluteFill>
-);
+        item,
+        index
+      ) => ({
+        ...item,
+        startFrame:
+          item?.startFrame ||
+          0,
+        durationFrames:
+          item?.durationFrames ||
+          300,
+        shotId:
+          item?.shotId ||
+          `${item?.sceneId || index}_SHOT`
+      })
+    );
+  }
+
+
+  return [];
+};
+
+
+// ======================================================
+// MAIN COMPOSITION
+// ======================================================
+
+const YouTubeV4 = ({
+  timelineShots = [],
+  scenes = [],
+  scene = null,
+  visual = null
+}) => {
+
+  const shots =
+    normalizeShots({
+      timelineShots,
+      scenes,
+      scene,
+      visual
+    });
+
+  return (
+    <AbsoluteFill>
+      <BaseBackground />
+
+      {shots.map(
+        (
+          shot,
+          index
+        ) => (
+
+          <Sequence
+            key={
+              shot?.shotId ||
+              shot?.sceneId ||
+              index
+            }
+            from={
+              Number(
+                shot?.startFrame ||
+                0
+              )
+            }
+            durationInFrames={
+              Math.max(
+                1,
+                Number(
+                  shot?.durationFrames ||
+                  1
+                )
+              )
+            }
+          >
+            <ShotRenderer
+              shot={shot}
+            />
+          </Sequence>
+        )
+      )}
+    </AbsoluteFill>
+  );
+};
+
+
+// ======================================================
+// REMOTION ROOT
+// ======================================================
 
 export const RemotionRoot = () => (
+
   <Composition
     id="YouTubeV4"
 
@@ -2461,13 +2164,9 @@ export const RemotionRoot = () => (
       DEFAULT_PROPS.fps
     }
 
-    width={
-      1920
-    }
+    width={1920}
 
-    height={
-      1080
-    }
+    height={1080}
 
     defaultProps={
       DEFAULT_PROPS
@@ -2477,17 +2176,27 @@ export const RemotionRoot = () => (
       async ({
         props
       }) => ({
+
         durationInFrames:
-          Number(
-            props
-              ?.totalDurationFrames ||
-            300
+          Math.max(
+            1,
+            Number(
+              props
+                ?.totalDurationFrames ||
+              props
+                ?.scene
+                ?.durationFrames ||
+              props
+                ?.timelineShots
+                ?.[0]
+                ?.durationFrames ||
+              300
+            )
           ),
 
         fps:
           Number(
-            props
-              ?.fps ||
+            props?.fps ||
             30
           ),
 
