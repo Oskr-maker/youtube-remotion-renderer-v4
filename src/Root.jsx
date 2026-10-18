@@ -420,7 +420,21 @@ const StockBackground = ({
 
 
 // ======================================================
-// 1. HOOK TRANSFORMATION
+// 1. HOOK TRANSFORMATION — CINEMATIC V4.3
+// ======================================================
+//
+// OBJETIVO:
+// - Evitar una "diapositiva animada".
+// - Crear un hook con fases visuales claras.
+// - Usar stock si existe.
+// - Mostrar caos -> transformación -> sistema.
+// - Mantener movimiento durante toda la escena.
+//
+// FASES:
+// 0-22%  : caos / tensión
+// 22-48% : ruptura / transición
+// 48-78% : reorganización
+// 78-100%: payoff final
 // ======================================================
 
 const HookTransformation = ({
@@ -430,215 +444,839 @@ const HookTransformation = ({
   const frame =
     useCurrentFrame();
 
-  const {fps} =
+  const {
+    fps,
+    durationInFrames
+  } =
     useVideoConfig();
 
-  const progress =
-    spring({
-      frame,
-      fps,
-      config: {
-        damping: 14,
-        stiffness: 115
-      }
-    });
+  const duration =
+    Math.max(
+      1,
+      Number(
+        shot?.durationFrames ||
+        durationInFrames ||
+        1
+      )
+    );
+
+  const stockUrl =
+    getStockUrl(shot);
 
   const text =
     getTextElements(shot);
 
-  const leftX =
-    interpolate(
-      progress,
-      [0, 1],
-      [-90, 0]
+  const headline =
+    text[0] ||
+    getHeadline(shot) ||
+    'Convierte caos en un sistema útil';
+
+  const progress =
+    clamp(
+      frame / duration,
+      0,
+      1
     );
 
-  const rightX =
+  const chaosFade =
+    interpolate(
+      progress,
+      [0, 0.14, 0.34, 0.48],
+      [0, 1, 1, 0],
+      {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp'
+      }
+    );
+
+  const impactFlash =
+    interpolate(
+      progress,
+      [0.20, 0.235, 0.27],
+      [0, 0.92, 0],
+      {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp'
+      }
+    );
+
+  const systemReveal =
+    interpolate(
+      progress,
+      [0.39, 0.53, 0.82],
+      [0, 1, 1],
+      {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp'
+      }
+    );
+
+  const payoffReveal =
+    interpolate(
+      progress,
+      [0.68, 0.80, 1],
+      [0, 1, 1],
+      {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp'
+      }
+    );
+
+  const backgroundScale =
     interpolate(
       progress,
       [0, 1],
-      [90, 0]
+      [1.04, 1.14],
+      {
+        extrapolateRight: 'clamp'
+      }
     );
+
+  const cameraX =
+    Math.sin(
+      frame / 11
+    ) * 12;
+
+  const chaosShake =
+    progress < 0.34
+      ? Math.sin(frame * 1.9) * 5
+      : 0;
+
+  const titleSpring =
+    spring({
+      frame,
+      fps,
+      config: {
+        damping: 13,
+        stiffness: 130,
+        mass: 0.8
+      }
+    });
+
+  const titleScale =
+    0.88 +
+    titleSpring * 0.12;
+
+  const titleY =
+    interpolate(
+      titleSpring,
+      [0, 1],
+      [46, 0]
+    );
+
+  const systemSpring =
+    spring({
+      frame:
+        frame -
+        Math.round(
+          duration * 0.43
+        ),
+      fps,
+      config: {
+        damping: 14,
+        stiffness: 120
+      }
+    });
+
+  const systemScale =
+    0.86 +
+    systemSpring * 0.14;
+
+  const chaosCards = [
+    {
+      label: 'Notas sueltas',
+      x: 90,
+      y: 265,
+      r: -8,
+      tone: COLORS.red
+    },
+    {
+      label: '¿Quién hace qué?',
+      x: 430,
+      y: 180,
+      r: 6,
+      tone: COLORS.amber
+    },
+    {
+      label: 'Tareas manuales',
+      x: 230,
+      y: 525,
+      r: 9,
+      tone: COLORS.red
+    },
+    {
+      label: 'Sin contexto',
+      x: 690,
+      y: 420,
+      r: -5,
+      tone: COLORS.amber
+    },
+    {
+      label: 'Repetir otra vez',
+      x: 520,
+      y: 650,
+      r: 7,
+      tone: COLORS.red
+    }
+  ];
+
+  const systemSteps = [
+    {
+      label: 'ENTRADA',
+      value: 'Notas + contexto',
+      color: COLORS.blue
+    },
+    {
+      label: 'CRITERIO',
+      value: 'Reglas claras',
+      color: COLORS.cyan
+    },
+    {
+      label: 'RESULTADO',
+      value: 'Resumen + tareas',
+      color: COLORS.green
+    }
+  ];
 
   return (
-    <AbsoluteFill>
-      <BaseBackground />
+    <AbsoluteFill
+      style={{
+        background:
+          COLORS.bg0,
+        overflow:
+          'hidden'
+      }}
+    >
+
+      {stockUrl
+        ? (
+          <AbsoluteFill
+            style={{
+              transform:
+                `translateX(${cameraX}px) scale(${backgroundScale})`,
+              filter:
+                progress < 0.46
+                  ? 'saturate(.70) contrast(1.12) brightness(.62)'
+                  : 'saturate(.92) contrast(1.07) brightness(.68)'
+            }}
+          >
+            <Video
+              src={stockUrl}
+              muted
+              style={{
+                width:
+                  '100%',
+                height:
+                  '100%',
+                objectFit:
+                  'cover'
+              }}
+            />
+          </AbsoluteFill>
+        )
+        : (
+          <>
+            <BaseBackground />
+
+            <AbsoluteFill
+              style={{
+                transform:
+                  `translateX(${cameraX}px) scale(${backgroundScale})`,
+                background:
+                  'radial-gradient(circle at 18% 22%, rgba(255,104,116,.18), transparent 24%), radial-gradient(circle at 78% 68%, rgba(22,221,178,.18), transparent 27%), radial-gradient(circle at 54% 48%, rgba(109,124,255,.16), transparent 34%)'
+              }}
+            />
+          </>
+        )}
+
+      <AbsoluteFill
+        style={{
+          background:
+            'linear-gradient(90deg,rgba(3,5,10,.92) 0%,rgba(3,5,10,.58) 42%,rgba(3,5,10,.82) 100%)'
+        }}
+      />
 
       <Grid
-        opacity={0.11}
+        opacity={0.045}
       />
 
       <AmbientGlow
-        left="24%"
-        top="30%"
+        left="22%"
+        top="34%"
+        size={900}
         color="255,104,116"
-        opacity={0.13}
+        opacity={0.14}
       />
 
       <AmbientGlow
-        left="78%"
-        top="70%"
+        left="77%"
+        top="67%"
+        size={980}
         color="22,221,178"
-        opacity={0.14}
+        opacity={0.15}
       />
 
       <AbsoluteFill
         style={{
-          padding:
-            '86px 100px'
+          opacity:
+            chaosFade,
+          transform:
+            `translate(${chaosShake}px, ${-chaosShake * 0.55}px)`
         }}
       >
         <div
           style={{
-            fontFamily: FONT,
-            fontSize: 34,
-            color:
-              COLORS.muted,
-            fontWeight: 700
+            position:
+              'absolute',
+            left:
+              92,
+            top:
+              72,
+            display:
+              'flex',
+            alignItems:
+              'center',
+            gap:
+              15
           }}
         >
-          DE CAOS A SISTEMA
-        </div>
-
-        <div
-          style={{
-            marginTop: 26,
-            fontFamily: FONT,
-            fontSize: 72,
-            lineHeight: 1.03,
-            color: '#fff',
-            fontWeight: 850,
-            maxWidth: 1450,
-            letterSpacing: '-1px'
-          }}
-        >
-          {text[0] ||
-            getHeadline(shot)}
-        </div>
-
-        <div
-          style={{
-            marginTop: 68,
-            display: 'grid',
-            gridTemplateColumns:
-              '1fr 140px 1fr',
-            gap: 28,
-            alignItems: 'center'
-          }}
-        >
-          <GlassCard
+          <div
             style={{
-              height: 510,
-              padding: 34,
-              transform:
-                `translateX(${leftX}px)`
+              width:
+                12,
+              height:
+                12,
+              borderRadius:
+                999,
+              background:
+                COLORS.red,
+              boxShadow:
+                '0 0 28px rgba(255,104,116,.75)'
             }}
-          >
-            <Badge
-              color={COLORS.red}
-            >
-              ANTES
-            </Badge>
-
-            <div
-              style={{
-                marginTop: 34,
-                display: 'grid',
-                gap: 16
-              }}
-            >
-              {[
-                'Notas dispersas',
-                'Instrucciones repetidas',
-                'Tareas manuales',
-                'Decisiones sin estructura'
-              ].map(
-                (
-                  label,
-                  index
-                ) => (
-                  <div
-                    key={label}
-                    style={{
-                      padding:
-                        '18px 22px',
-                      borderRadius: 16,
-                      background:
-                        index % 2 === 0
-                          ? 'rgba(255,104,116,0.11)'
-                          : 'rgba(255,255,255,0.055)',
-                      border:
-                        '1px solid rgba(255,255,255,0.08)',
-                      color: '#fff',
-                      fontFamily: FONT,
-                      fontSize: 30,
-                      transform:
-                        `rotate(${index % 2 === 0 ? -1.4 : 1.2}deg)`
-                    }}
-                  >
-                    {label}
-                  </div>
-                )
-              )}
-            </div>
-          </GlassCard>
+          />
 
           <div
             style={{
-              textAlign: 'center',
-              fontSize: 84,
               color:
-                COLORS.cyan,
-              transform:
-                `scale(${0.88 + progress * 0.12})`
+                'rgba(255,255,255,.72)',
+              fontFamily:
+                FONT,
+              fontSize:
+                24,
+              fontWeight:
+                800,
+              letterSpacing:
+                2
             }}
           >
-            →
+            DEMASIADO CAOS
           </div>
+        </div>
 
-          <GlassCard
-            style={{
-              height: 510,
-              padding: 34,
-              transform:
-                `translateX(${rightX}px)`
-            }}
-          >
-            <Badge
-              color={COLORS.green}
-            >
-              DESPUÉS
-            </Badge>
+        {chaosCards.map(
+          (
+            card,
+            index
+          ) => {
 
-            <div
-              style={{
-                marginTop: 34
-              }}
-            >
-              <CheckRow
-                text="Entrada clara"
-              />
+            const cardDelay =
+              index * 3;
 
-              <CheckRow
-                text="Resultado definido"
-              />
+            const cardSpring =
+              spring({
+                frame:
+                  frame -
+                  cardDelay,
+                fps,
+                config: {
+                  damping:
+                    11,
+                  stiffness:
+                    145
+                }
+              });
 
-              <CheckRow
-                text="Límites explícitos"
-              />
+            const float =
+              Math.sin(
+                (
+                  frame +
+                  index * 11
+                ) /
+                9
+              ) *
+              11;
 
-              <CheckRow
-                text="Asistente reutilizable"
-              />
-            </div>
-          </GlassCard>
+            return (
+              <div
+                key={
+                  card.label
+                }
+                style={{
+                  position:
+                    'absolute',
+                  left:
+                    card.x,
+                  top:
+                    card.y +
+                    float,
+                  padding:
+                    '20px 28px',
+                  minWidth:
+                    265,
+                  borderRadius:
+                    18,
+                  background:
+                    'rgba(12,16,27,.92)',
+                  border:
+                    `1px solid ${card.tone}66`,
+                  boxShadow:
+                    `0 20px 60px rgba(0,0,0,.40), 0 0 30px ${card.tone}18`,
+                  color:
+                    '#fff',
+                  fontFamily:
+                    FONT,
+                  fontSize:
+                    29,
+                  fontWeight:
+                    800,
+                  transform:
+                    `scale(${0.78 + cardSpring * 0.22}) rotate(${card.r}deg)`,
+                  opacity:
+                    cardSpring
+                }}
+              >
+                {card.label}
+              </div>
+            );
+          }
+        )}
+
+        <div
+          style={{
+            position:
+              'absolute',
+            right:
+              90,
+            top:
+              155,
+            width:
+              760,
+            fontFamily:
+              FONT,
+            fontSize:
+              78,
+            lineHeight:
+              1.02,
+            fontWeight:
+              900,
+            color:
+              '#fff',
+            letterSpacing:
+              '-2px',
+            transform:
+              `translateY(${titleY}px) scale(${titleScale})`,
+            transformOrigin:
+              'right center',
+            textAlign:
+              'right',
+            textShadow:
+              '0 16px 45px rgba(0,0,0,.65)'
+          }}
+        >
+          {headline}
+        </div>
+
+        <div
+          style={{
+            position:
+              'absolute',
+            right:
+              94,
+            top:
+              360,
+            maxWidth:
+              680,
+            fontFamily:
+              FONT,
+            fontSize:
+              31,
+            lineHeight:
+              1.35,
+            fontWeight:
+              650,
+            color:
+              'rgba(255,255,255,.70)',
+            textAlign:
+              'right'
+          }}
+        >
+          Cuando todo depende de notas dispersas,
+          memoria y repetir instrucciones,
+          el trabajo se vuelve ruido.
         </div>
       </AbsoluteFill>
+
+      <AbsoluteFill
+        style={{
+          opacity:
+            impactFlash,
+          background:
+            'linear-gradient(115deg,rgba(255,255,255,.97),rgba(109,124,255,.86),rgba(41,211,255,.68))',
+          mixBlendMode:
+            'screen'
+        }}
+      />
+
+      {progress > 0.20 &&
+      progress < 0.42
+        ? (
+          <>
+            {[
+              0,
+              1,
+              2,
+              3,
+              4,
+              5
+            ].map(
+              (
+                index
+              ) => (
+                <div
+                  key={
+                    index
+                  }
+                  style={{
+                    position:
+                      'absolute',
+                    left:
+                      `${7 + index * 17}%`,
+                    top:
+                      -80,
+                    width:
+                      12 +
+                      index * 4,
+                    height:
+                      1240,
+                    background:
+                      index % 2 === 0
+                        ? 'rgba(109,124,255,.16)'
+                        : 'rgba(41,211,255,.10)',
+                    transform:
+                      `rotate(18deg) translateX(${(progress - .20) * 900}px)`,
+                    filter:
+                      'blur(1px)'
+                  }}
+                />
+              )
+            )}
+          </>
+        )
+        : null}
+
+      <AbsoluteFill
+        style={{
+          opacity:
+            systemReveal
+        }}
+      >
+        <div
+          style={{
+            position:
+              'absolute',
+            left:
+              90,
+            top:
+              70,
+            display:
+              'flex',
+            alignItems:
+              'center',
+            gap:
+              14
+          }}
+        >
+          <div
+            style={{
+              width:
+                12,
+              height:
+                12,
+              borderRadius:
+                999,
+              background:
+                COLORS.green,
+              boxShadow:
+                '0 0 28px rgba(22,221,178,.82)'
+            }}
+          />
+
+          <div
+            style={{
+              color:
+                'rgba(255,255,255,.75)',
+              fontFamily:
+                FONT,
+              fontSize:
+                24,
+              fontWeight:
+                800,
+              letterSpacing:
+                2
+            }}
+          >
+            AHORA HAY SISTEMA
+          </div>
+        </div>
+
+        <AbsoluteFill
+          style={{
+            justifyContent:
+              'center',
+            alignItems:
+              'center',
+            padding:
+              '145px 95px 70px'
+          }}
+        >
+          <div
+            style={{
+              width:
+                '100%',
+              display:
+                'grid',
+              gridTemplateColumns:
+                '1fr 130px 1fr 130px 1fr',
+              alignItems:
+                'center',
+              transform:
+                `scale(${systemScale})`
+            }}
+          >
+            {systemSteps.map(
+              (
+                step,
+                index
+              ) => {
+
+                const local =
+                  spring({
+                    frame:
+                      frame -
+                      Math.round(
+                        duration *
+                        (
+                          0.44 +
+                          index *
+                          0.07
+                        )
+                      ),
+                    fps,
+                    config: {
+                      damping:
+                        14,
+                      stiffness:
+                        125
+                    }
+                  });
+
+                return (
+                  <React.Fragment
+                    key={
+                      step.label
+                    }
+                  >
+                    <GlassCard
+                      style={{
+                        height:
+                          360,
+                        padding:
+                          34,
+                        opacity:
+                          local,
+                        transform:
+                          `translateY(${(1 - local) * 60}px) scale(${0.92 + local * 0.08})`,
+                        border:
+                          `1px solid ${step.color}55`,
+                        boxShadow:
+                          `0 30px 90px rgba(0,0,0,.42), 0 0 55px ${step.color}18`
+                      }}
+                    >
+                      <div
+                        style={{
+                          width:
+                            54,
+                          height:
+                            54,
+                          borderRadius:
+                            16,
+                          background:
+                            `${step.color}22`,
+                          border:
+                            `1px solid ${step.color}77`,
+                          display:
+                            'flex',
+                          alignItems:
+                            'center',
+                          justifyContent:
+                            'center',
+                          color:
+                            step.color,
+                          fontFamily:
+                            FONT,
+                          fontSize:
+                            26,
+                          fontWeight:
+                            900
+                        }}
+                      >
+                        {index + 1}
+                      </div>
+
+                      <div
+                        style={{
+                          marginTop:
+                            36,
+                          color:
+                            'rgba(255,255,255,.55)',
+                          fontFamily:
+                            FONT,
+                          fontSize:
+                            22,
+                          fontWeight:
+                            800,
+                          letterSpacing:
+                            2
+                        }}
+                      >
+                        {step.label}
+                      </div>
+
+                      <div
+                        style={{
+                          marginTop:
+                            18,
+                          color:
+                            '#fff',
+                          fontFamily:
+                            FONT,
+                          fontSize:
+                            39,
+                          lineHeight:
+                            1.08,
+                          fontWeight:
+                            900
+                        }}
+                      >
+                        {step.value}
+                      </div>
+                    </GlassCard>
+
+                    {index <
+                    systemSteps.length -
+                      1
+                      ? (
+                        <div
+                          style={{
+                            textAlign:
+                              'center',
+                            fontSize:
+                              68,
+                            color:
+                              'rgba(255,255,255,.45)',
+                            transform:
+                              `scale(${0.90 + local * 0.10})`
+                          }}
+                        >
+                          →
+                        </div>
+                      )
+                      : null}
+                  </React.Fragment>
+                );
+              }
+            )}
+          </div>
+        </AbsoluteFill>
+      </AbsoluteFill>
+
+      <AbsoluteFill
+        style={{
+          opacity:
+            payoffReveal,
+          pointerEvents:
+            'none'
+        }}
+      >
+        <div
+          style={{
+            position:
+              'absolute',
+            left:
+              '50%',
+            bottom:
+              66,
+            transform:
+              'translateX(-50%)',
+            width:
+              1320,
+            padding:
+              '20px 34px',
+            borderRadius:
+              22,
+            background:
+              'rgba(5,9,16,.84)',
+            border:
+              '1px solid rgba(22,221,178,.30)',
+            boxShadow:
+              '0 22px 70px rgba(0,0,0,.40)',
+            backdropFilter:
+              'blur(10px)',
+            display:
+              'flex',
+            alignItems:
+              'center',
+            justifyContent:
+              'space-between'
+          }}
+        >
+          <div
+            style={{
+              fontFamily:
+                FONT,
+              fontSize:
+                31,
+              fontWeight:
+                900,
+              color:
+                '#fff'
+            }}
+          >
+            Una instrucción clara puede convertirse en un sistema reutilizable.
+          </div>
+
+          <Badge
+            color={
+              COLORS.green
+            }
+          >
+            LISTO PARA REPETIR
+          </Badge>
+        </div>
+      </AbsoluteFill>
+
+      <AbsoluteFill
+        style={{
+          boxShadow:
+            'inset 0 0 180px rgba(0,0,0,.78)',
+          pointerEvents:
+            'none'
+        }}
+      />
+
     </AbsoluteFill>
   );
 };
-
-
 // ======================================================
 // 2. STOCK + UI INTRO
 // ======================================================
@@ -1488,8 +2126,6 @@ const DualToolComparison = ({
     </AbsoluteFill>
   );
 };
-
-
 // ======================================================
 // 6. VALIDATION / BEFORE AFTER
 // ======================================================
@@ -1991,12 +2627,6 @@ const ShotRenderer = ({
 
 // ======================================================
 // NORMALIZE INPUT
-//
-// Compatible con:
-// - timelineShots
-// - scene
-// - scenes
-// - visual
 // ======================================================
 
 const normalizeShots = ({
