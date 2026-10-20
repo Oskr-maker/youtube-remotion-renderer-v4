@@ -13,18 +13,18 @@ import {
 
 
 // ======================================================
-// YOUTUBE V4.5 — CINEMATIC REAL-ASSET EDITION
+// YOUTUBE V4.6 — CINEMATIC CONTROLLED STOCK EDITION
 // ======================================================
 //
-// OBJETIVOS:
-// - Vídeo real protagonista.
-// - UI como apoyo, no como capa dominante.
-// - Fases del hook SIN solapamiento.
-// - Menos texto simultáneo.
-// - Movimiento continuo.
-// - Jerarquía editorial.
-// - Escenas específicas para Gemini / Claude.
-// - Compatible con manifest V4.2.10.
+// CAMBIO PRINCIPAL V4.6:
+//
+// - El HOOK reproduce el stock más lentamente.
+// - Evitamos llegar a la parte débil/oscura final del clip.
+// - Pequeño trim inicial.
+// - El vídeo sigue teniendo movimiento gracias al pan/zoom.
+// - No cambiamos la arquitectura del manifest.
+// - No cambiamos n8n.
+// - No cambiamos Composition ID.
 //
 // COMPOSITION:
 // YouTubeV4
@@ -66,12 +66,6 @@ const COLORS = {
   green: '#19d6a3',
   amber: '#ffbd59',
   red: '#ff6676',
-
-  glass:
-    'rgba(10,15,25,0.74)',
-
-  glassStrong:
-    'rgba(8,12,20,0.88)',
 
   border:
     'rgba(255,255,255,0.14)',
@@ -308,13 +302,13 @@ const AmbientGlow = ({
 // ======================================================
 
 const Vignette = ({
-  opacity = 0.45,
+  opacity = 0.35,
 }) => (
 
   <AbsoluteFill
     style={{
       background:
-        `radial-gradient(circle at 50% 45%,transparent 38%,rgba(0,0,0,${opacity}) 100%)`,
+        `radial-gradient(circle at 50% 45%,transparent 40%,rgba(0,0,0,${opacity}) 100%)`,
 
       pointerEvents:
         'none',
@@ -326,21 +320,45 @@ const Vignette = ({
 
 // ======================================================
 // CINEMATIC VIDEO
+//
+// playbackRate:
+//   1.00 = normal
+//   0.72 = hook, evita avanzar demasiado en el clip
+//
+// trimStartSec:
+//   pequeño desplazamiento para evitar un inicio flojo
 // ======================================================
 
 const CinematicVideo = ({
   shot,
+
   darkness = 0.14,
+
   saturation = 1.05,
+
   contrast = 1.05,
+
   brightness = 1,
+
   zoomStart = 1.02,
+
   zoomEnd = 1.08,
+
   position = 'center center',
+
+  playbackRate = 1,
+
+  trimStartSec = 0,
 }) => {
 
   const frame =
     useCurrentFrame();
+
+
+  const {
+    fps,
+  } =
+    useVideoConfig();
 
 
   const duration =
@@ -373,7 +391,9 @@ const CinematicVideo = ({
   const scale =
     interpolate(
       progress,
+
       [0, 1],
+
       [
         zoomStart,
         zoomEnd,
@@ -384,8 +404,10 @@ const CinematicVideo = ({
   const panX =
     interpolate(
       progress,
+
       [0, 1],
-      [-8, 10]
+
+      [-10, 12]
     );
 
 
@@ -393,7 +415,18 @@ const CinematicVideo = ({
     Math.sin(
       progress *
       Math.PI
-    ) * -5;
+    ) *
+    -5;
+
+
+  const startFrom =
+    Math.max(
+      0,
+      Math.round(
+        trimStartSec *
+        fps
+      )
+    );
 
 
   return (
@@ -408,7 +441,16 @@ const CinematicVideo = ({
 
         <Video
           src={src}
+
           muted
+
+          playbackRate={
+            playbackRate
+          }
+
+          startFrom={
+            startFrom
+          }
 
           style={{
             width:
@@ -443,7 +485,7 @@ const CinematicVideo = ({
 
 
       <Vignette
-        opacity={0.27}
+        opacity={0.25}
       />
 
     </>
@@ -714,8 +756,11 @@ const SectionLabel = ({
 
 const HeroTitle = ({
   children,
+
   size = 76,
+
   width = 900,
+
   align = 'left',
 }) => (
 
@@ -759,16 +804,7 @@ const HeroTitle = ({
 
 // ======================================================
 // ======================================================
-// 1. HOOK
-//
-// V4.5:
-// FASE 1 = 0.00 -> 0.29
-// TRANSICIÓN = 0.29 -> 0.35
-// FASE 2 = 0.35 -> 0.65
-// TRANSICIÓN = 0.65 -> 0.72
-// FASE 3 = 0.72 -> 1.00
-//
-// Los titulares nunca permanecen visibles juntos.
+// 1. HOOK — V4.6
 // ======================================================
 // ======================================================
 
@@ -842,9 +878,9 @@ const HookTransformation = ({
     });
 
 
-  // ----------------------------------------------------
-  // FASE 1
-  // ----------------------------------------------------
+  // ====================================================
+  // FASES TOTALMENTE SEPARADAS
+  // ====================================================
 
   const phase1 =
     fadeInOut(
@@ -852,35 +888,27 @@ const HookTransformation = ({
       0.00,
       0.025,
       0.255,
-      0.31
+      0.305
     );
 
-
-  // ----------------------------------------------------
-  // FASE 2
-  // ----------------------------------------------------
 
   const phase2 =
     fadeInOut(
       progress,
-      0.33,
-      0.38,
-      0.61,
-      0.67
+      0.345,
+      0.39,
+      0.605,
+      0.655
     );
 
-
-  // ----------------------------------------------------
-  // FASE 3
-  // ----------------------------------------------------
 
   const phase3 =
     interpolate(
       progress,
 
       [
-        0.70,
-        0.76,
+        0.705,
+        0.765,
         1,
       ],
 
@@ -899,24 +927,20 @@ const HookTransformation = ({
       }
     );
 
-
-  // ----------------------------------------------------
-  // TRANSITION FLASH 1
-  // ----------------------------------------------------
 
   const flash1 =
     interpolate(
       progress,
 
       [
-        0.29,
-        0.32,
-        0.35,
+        0.295,
+        0.325,
+        0.355,
       ],
 
       [
         0,
-        0.48,
+        0.34,
         0,
       ],
 
@@ -930,23 +954,19 @@ const HookTransformation = ({
     );
 
 
-  // ----------------------------------------------------
-  // TRANSITION FLASH 2
-  // ----------------------------------------------------
-
   const flash2 =
     interpolate(
       progress,
 
       [
-        0.64,
-        0.675,
-        0.71,
+        0.645,
+        0.68,
+        0.715,
       ],
 
       [
         0,
-        0.34,
+        0.27,
         0,
       ],
 
@@ -977,19 +997,23 @@ const HookTransformation = ({
           <CinematicVideo
             shot={shot}
 
-            darkness={0.055}
+            darkness={0.045}
 
             saturation={1.10}
 
             contrast={1.06}
 
-            brightness={1.03}
+            brightness={1.04}
 
             zoomStart={1.015}
 
-            zoomEnd={1.075}
+            zoomEnd={1.085}
 
             position="center center"
+
+            playbackRate={0.72}
+
+            trimStartSec={0.20}
           />
 
         )
@@ -1014,19 +1038,17 @@ const HookTransformation = ({
         )}
 
 
-      {/* ------------------------------------------------
-          SUBTLE LEFT READABILITY
-      ------------------------------------------------ */}
+      {/* READABILITY */}
 
       <AbsoluteFill
         style={{
           background:
-            'linear-gradient(90deg,rgba(3,5,9,.68) 0%,rgba(3,5,9,.25) 39%,rgba(3,5,9,.035) 72%,rgba(3,5,9,.035) 100%)',
+            'linear-gradient(90deg,rgba(3,5,9,.64) 0%,rgba(3,5,9,.22) 39%,rgba(3,5,9,.025) 72%,rgba(3,5,9,.02) 100%)',
         }}
       />
 
 
-      {/* CINEMATIC BARS */}
+      {/* CINEMA BARS */}
 
       <div
         style={{
@@ -1043,7 +1065,7 @@ const HookTransformation = ({
             0,
 
           height:
-            15,
+            14,
 
           background:
             '#000',
@@ -1066,7 +1088,7 @@ const HookTransformation = ({
             0,
 
           height:
-            15,
+            14,
 
           background:
             '#000',
@@ -1097,11 +1119,13 @@ const HookTransformation = ({
               74,
           }}
         >
+
           <SectionLabel
             color={COLORS.red}
           >
             EL PROBLEMA
           </SectionLabel>
+
         </div>
 
 
@@ -1307,9 +1331,7 @@ const HookTransformation = ({
       </AbsoluteFill>
 
 
-      {/* =================================================
-          TRANSITION 1
-      ================================================= */}
+      {/* TRANSITION 1 */}
 
       <AbsoluteFill
         style={{
@@ -1317,7 +1339,7 @@ const HookTransformation = ({
             flash1,
 
           background:
-            'linear-gradient(110deg,rgba(255,255,255,.70),rgba(41,211,255,.38),transparent)',
+            'linear-gradient(110deg,rgba(255,255,255,.60),rgba(41,211,255,.30),transparent)',
 
           mixBlendMode:
             'screen',
@@ -1326,7 +1348,7 @@ const HookTransformation = ({
 
 
       {/* =================================================
-          PHASE 2 — TRANSFORMATION
+          PHASE 2 — TRANSFORM
       ================================================= */}
 
       <AbsoluteFill
@@ -1341,7 +1363,7 @@ const HookTransformation = ({
           top="55%"
           size={1100}
           color="41,211,255"
-          opacity={0.14}
+          opacity={0.13}
         />
 
 
@@ -1357,11 +1379,13 @@ const HookTransformation = ({
               74,
           }}
         >
+
           <SectionLabel
             color={COLORS.cyan}
           >
             TRANSFORMA
           </SectionLabel>
+
         </div>
 
 
@@ -1564,9 +1588,7 @@ const HookTransformation = ({
       </AbsoluteFill>
 
 
-      {/* =================================================
-          TRANSITION 2
-      ================================================= */}
+      {/* TRANSITION 2 */}
 
       <AbsoluteFill
         style={{
@@ -1574,7 +1596,7 @@ const HookTransformation = ({
             flash2,
 
           background:
-            'linear-gradient(110deg,transparent,rgba(25,214,163,.42),rgba(255,255,255,.40))',
+            'linear-gradient(110deg,transparent,rgba(25,214,163,.34),rgba(255,255,255,.32))',
 
           mixBlendMode:
             'screen',
@@ -1583,7 +1605,7 @@ const HookTransformation = ({
 
 
       {/* =================================================
-          PHASE 3 — PAYOFF
+          PHASE 3 — RESULT
       ================================================= */}
 
       <AbsoluteFill
@@ -1596,7 +1618,7 @@ const HookTransformation = ({
         <AbsoluteFill
           style={{
             background:
-              'linear-gradient(90deg,rgba(3,5,9,.67) 0%,rgba(3,5,9,.24) 46%,rgba(3,5,9,.025) 75%,rgba(3,5,9,.02) 100%)',
+              'linear-gradient(90deg,rgba(3,5,9,.63) 0%,rgba(3,5,9,.21) 46%,rgba(3,5,9,.015) 76%,rgba(3,5,9,.01) 100%)',
           }}
         />
 
@@ -1613,11 +1635,13 @@ const HookTransformation = ({
               76,
           }}
         >
+
           <SectionLabel
             color={COLORS.green}
           >
             RESULTADO
           </SectionLabel>
+
         </div>
 
 
@@ -1690,9 +1714,7 @@ const HookTransformation = ({
 
 
 // ======================================================
-// ======================================================
 // 2. INTRO
-// ======================================================
 // ======================================================
 
 const StockPlusUI = ({
@@ -1770,9 +1792,11 @@ const StockPlusUI = ({
             70,
         }}
       >
+
         <SectionLabel>
           DE RESPUESTA A ASISTENTE
         </SectionLabel>
+
       </div>
 
 
@@ -1862,9 +1886,7 @@ const StockPlusUI = ({
 
 
 // ======================================================
-// ======================================================
 // 3. NOTES TO STRUCTURE
-// ======================================================
 // ======================================================
 
 const NotesToStructure = ({
@@ -1959,11 +1981,13 @@ const NotesToStructure = ({
             60,
         }}
       >
+
         <SectionLabel
           color={COLORS.amber}
         >
           DEL CAOS A LA ESTRUCTURA
         </SectionLabel>
+
       </div>
 
 
@@ -2306,9 +2330,7 @@ const NotesToStructure = ({
 
 
 // ======================================================
-// ======================================================
-// 4. GEMINI SETUP
-// ======================================================
+// 4. GEMINI
 // ======================================================
 
 const GeminiGemSetup = ({
@@ -2403,11 +2425,13 @@ const GeminiGemSetup = ({
             58,
         }}
       >
+
         <SectionLabel
           color={COLORS.blue}
         >
           GEMINI GEMS
         </SectionLabel>
+
       </div>
 
 
@@ -2789,9 +2813,7 @@ const GeminiGemSetup = ({
 
 
 // ======================================================
-// ======================================================
 // 5. CLAUDE / INSTRUCTION BUILDER
-// ======================================================
 // ======================================================
 
 const InstructionBuilder = ({
@@ -2870,11 +2892,13 @@ const InstructionBuilder = ({
             58,
         }}
       >
+
         <SectionLabel
           color={COLORS.amber}
         >
           CLAUDE COWORK
         </SectionLabel>
+
       </div>
 
 
@@ -3100,7 +3124,7 @@ const InstructionBuilder = ({
             marginTop:
               27,
 
-            padding:
+          padding:
               '18px 22px',
 
             borderRadius:
@@ -3138,9 +3162,7 @@ const InstructionBuilder = ({
 
 
 // ======================================================
-// ======================================================
 // 6. DUAL TOOL COMPARISON
-// ======================================================
 // ======================================================
 
 const DualToolComparison = ({
@@ -3516,9 +3538,7 @@ const DualToolComparison = ({
 
 
 // ======================================================
-// ======================================================
 // 7. VALIDATION
-// ======================================================
 // ======================================================
 
 const BeforeAfterValidation = ({
@@ -3841,9 +3861,7 @@ const BeforeAfterValidation = ({
 
 
 // ======================================================
-// ======================================================
 // 8. CTA
-// ======================================================
 // ======================================================
 
 const CTAEndcard = ({
@@ -4033,7 +4051,7 @@ const CTAEndcard = ({
 
 
 // ======================================================
-// GENERIC VISUAL
+// GENERIC
 // ======================================================
 
 const GenericVisual = ({
