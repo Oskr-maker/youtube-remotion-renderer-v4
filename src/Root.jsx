@@ -8,8 +8,28 @@ import {
   interpolate,
   spring,
   useCurrentFrame,
-  useVideoConfig
+  useVideoConfig,
 } from 'remotion';
+
+
+// ======================================================
+// YOUTUBE V4.4 — CINEMATIC REAL-ASSET EDITION
+// ======================================================
+//
+// OBJETIVO:
+// - El vídeo REAL es protagonista.
+// - La UI explica, no tapa.
+// - Menos tarjetas.
+// - Más profundidad.
+// - Mejor jerarquía visual.
+// - Movimiento continuo.
+// - Diseño distinto por escena.
+// - Look editorial / tecnológico / cinematográfico.
+// - Compatible con el manifest V4.2.10 actual.
+//
+// COMPOSITION ID:
+// YouTubeV4
+// ======================================================
 
 
 // ======================================================
@@ -22,27 +42,31 @@ const DEFAULT_PROPS = {
   timelineShots: [],
   scenes: [],
   scene: null,
-  visual: null
+  visual: null,
 };
 
 
 // ======================================================
-// GLOBAL DESIGN TOKENS
+// DESIGN SYSTEM
 // ======================================================
 
 const COLORS = {
-  bg0: '#05070d',
-  bg1: '#08111f',
-  panel: 'rgba(14,20,34,0.94)',
-  panelSoft: 'rgba(18,27,46,0.88)',
-  border: 'rgba(255,255,255,0.12)',
-  text: '#ffffff',
-  muted: 'rgba(255,255,255,0.62)',
+  bg: '#05070c',
+  bgSoft: '#0a0f19',
+
+  white: '#ffffff',
+  textSoft: 'rgba(255,255,255,0.72)',
+  textMuted: 'rgba(255,255,255,0.48)',
+
   blue: '#6d7cff',
   cyan: '#29d3ff',
-  green: '#16ddb2',
-  red: '#ff6874',
-  amber: '#ffbd59'
+  green: '#19d6a3',
+  amber: '#ffbd59',
+  red: '#ff6676',
+
+  glass: 'rgba(10,15,25,0.74)',
+  glassStrong: 'rgba(8,12,20,0.88)',
+  border: 'rgba(255,255,255,0.14)',
 };
 
 
@@ -74,22 +98,6 @@ const clamp = (
   );
 
 
-const getHeadline = (shot) =>
-  shot?.title ||
-  shot?.text?.headline ||
-  shot?.textElements?.[0] ||
-  shot?.captionPlan
-    ?.highlightKeywords?.[0] ||
-  '';
-
-
-const getTextElements = (shot) =>
-  safeArray(
-    shot?.textElements ||
-    shot?.visual?.textElements
-  );
-
-
 const getTemplate = (shot) =>
   shot?.template ||
   shot?.visual?.template ||
@@ -104,35 +112,25 @@ const getLayout = (shot) =>
   'generic';
 
 
+const getHeadline = (shot) =>
+  shot?.title ||
+  shot?.textElements?.[0] ||
+  shot?.visual?.textElements?.[0] ||
+  '';
+
+
+const getTextElements = (shot) =>
+  safeArray(
+    shot?.textElements ||
+    shot?.visual?.textElements
+  );
+
+
 const getStock = (shot) =>
   shot?.stock ||
   shot?.visual?.stock ||
   shot?.scene?.stock ||
   null;
-
-
-const getUIComponents = (shot) =>
-  safeArray(
-    shot?.ui?.components ||
-    shot?.visual?.ui?.components ||
-    shot?.scene?.ui?.components
-  );
-
-
-const getOverlays = (shot) =>
-  safeArray(
-    shot?.graphics?.overlays ||
-    shot?.visual?.graphics?.overlays ||
-    shot?.scene?.graphics?.overlays
-  );
-
-
-const getMotionActions = (shot) =>
-  safeArray(
-    shot?.motion?.actions ||
-    shot?.visual?.motion?.actions ||
-    shot?.scene?.motion?.actions
-  );
 
 
 const getStockUrl = (shot) => {
@@ -147,7 +145,17 @@ const getStockUrl = (shot) => {
     return stock.url;
   }
 
+  const videoLayer =
+    safeArray(
+      shot?.layers
+    ).find(
+      layer =>
+        layer?.type === 'video' &&
+        layer?.sourceURL
+    );
+
   return (
+    videoLayer?.sourceURL ||
     shot?.asset?.url ||
     shot?.visualAsset?.url ||
     shot?.videoUrl ||
@@ -166,41 +174,79 @@ const getDurationFrames = (shot) =>
   );
 
 
+const fadeInOut = (
+  progress,
+  start,
+  peakStart,
+  peakEnd,
+  end
+) =>
+  interpolate(
+    progress,
+    [
+      start,
+      peakStart,
+      peakEnd,
+      end,
+    ],
+    [
+      0,
+      1,
+      1,
+      0,
+    ],
+    {
+      extrapolateLeft: 'clamp',
+      extrapolateRight: 'clamp',
+    }
+  );
+
+
 // ======================================================
-// BACKGROUND COMPONENTS
+// BASE BACKGROUND
 // ======================================================
 
 const BaseBackground = () => (
   <AbsoluteFill
     style={{
       background:
-        'linear-gradient(135deg,#05070d 0%,#0a1322 48%,#05070d 100%)'
+        'linear-gradient(135deg,#05070c 0%,#09111c 52%,#05070c 100%)',
     }}
   />
 );
 
 
+// ======================================================
+// GRID
+// ======================================================
+
 const Grid = ({
-  opacity = 0.08
+  opacity = 0.04,
 }) => (
   <AbsoluteFill
     style={{
       opacity,
       backgroundImage:
-        'linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px)',
+        'linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px)',
       backgroundSize:
-        '64px 64px'
+        '72px 72px',
+      pointerEvents:
+        'none',
     }}
   />
 );
 
 
+// ======================================================
+// AMBIENT GLOW
+// ======================================================
+
 const AmbientGlow = ({
   left = '50%',
   top = '50%',
-  size = 900,
+  size = 800,
   color = '109,124,255',
-  opacity = 0.18
+  opacity = 0.18,
 }) => (
   <div
     style={{
@@ -211,34 +257,160 @@ const AmbientGlow = ({
       height: size,
       transform:
         'translate(-50%,-50%)',
-      borderRadius: '50%',
+      borderRadius:
+        '50%',
       background:
-        `radial-gradient(circle, rgba(${color},${opacity}) 0%, rgba(${color},0) 70%)`,
-      pointerEvents: 'none'
+        `radial-gradient(circle,rgba(${color},${opacity}) 0%,rgba(${color},0) 68%)`,
+      pointerEvents:
+        'none',
     }}
   />
 );
 
 
 // ======================================================
-// BASIC UI COMPONENTS
+// VIGNETTE
 // ======================================================
 
-const GlassCard = ({
+const Vignette = ({
+  opacity = 0.45,
+}) => (
+  <AbsoluteFill
+    style={{
+      background:
+        `radial-gradient(circle at 50% 45%,transparent 38%,rgba(0,0,0,${opacity}) 100%)`,
+      pointerEvents:
+        'none',
+    }}
+  />
+);
+
+
+// ======================================================
+// CINEMATIC STOCK VIDEO
+// ======================================================
+
+const CinematicVideo = ({
+  shot,
+  darkness = 0.18,
+  saturation = 1.05,
+  contrast = 1.05,
+  zoomStart = 1.02,
+  zoomEnd = 1.09,
+  position = 'center center',
+}) => {
+
+  const frame =
+    useCurrentFrame();
+
+  const duration =
+    getDurationFrames(
+      shot
+    );
+
+  const src =
+    getStockUrl(
+      shot
+    );
+
+  if (!src) {
+    return null;
+  }
+
+  const progress =
+    clamp(
+      frame /
+      duration,
+      0,
+      1
+    );
+
+  const scale =
+    interpolate(
+      progress,
+      [0, 1],
+      [
+        zoomStart,
+        zoomEnd,
+      ]
+    );
+
+  const panX =
+    interpolate(
+      progress,
+      [0, 1],
+      [-10, 12]
+    );
+
+  return (
+    <>
+      <AbsoluteFill
+        style={{
+          overflow:
+            'hidden',
+        }}
+      >
+        <Video
+          src={src}
+          muted
+          style={{
+            width:
+              '100%',
+            height:
+              '100%',
+            objectFit:
+              'cover',
+            objectPosition:
+              position,
+            transform:
+              `translateX(${panX}px) scale(${scale})`,
+            filter:
+              `saturate(${saturation}) contrast(${contrast})`,
+          }}
+        />
+      </AbsoluteFill>
+
+      <AbsoluteFill
+        style={{
+          background:
+            `rgba(2,5,10,${darkness})`,
+        }}
+      />
+
+      <Vignette
+        opacity={0.34}
+      />
+    </>
+  );
+};
+
+
+// ======================================================
+// GLASS PANEL
+// ======================================================
+
+const GlassPanel = ({
   children,
-  style = {}
+  style = {},
 }) => (
   <div
     style={{
       background:
-        'linear-gradient(145deg,rgba(18,27,46,0.96),rgba(7,11,20,0.96))',
+        'linear-gradient(145deg,rgba(14,20,32,.82),rgba(6,10,18,.70))',
+
       border:
         `1px solid ${COLORS.border}`,
+
       boxShadow:
-        '0 30px 90px rgba(0,0,0,0.42)',
+        '0 28px 90px rgba(0,0,0,.32)',
+
+      backdropFilter:
+        'blur(18px)',
+
       borderRadius:
         26,
-      ...style
+
+      ...style,
     }}
   >
     {children}
@@ -246,52 +418,48 @@ const GlassCard = ({
 );
 
 
-const BrowserDots = () => (
-  <div
-    style={{
-      display: 'flex',
-      gap: 10
-    }}
-  >
-    {[
-      '#ff6d73',
-      '#ffbd59',
-      '#25d39c'
-    ].map(
-      (color) => (
-        <div
-          key={color}
-          style={{
-            width: 14,
-            height: 14,
-            borderRadius: 999,
-            background: color
-          }}
-        />
-      )
-    )}
-  </div>
-);
-
+// ======================================================
+// BADGE
+// ======================================================
 
 const Badge = ({
   children,
-  color = COLORS.blue
+  color = COLORS.blue,
 }) => (
   <div
     style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      padding: '10px 18px',
-      borderRadius: 999,
+      display:
+        'inline-flex',
+
+      alignItems:
+        'center',
+
+      padding:
+        '9px 16px',
+
+      borderRadius:
+        999,
+
       background:
         `${color}22`,
+
       border:
         `1px solid ${color}66`,
-      color: '#fff',
-      fontFamily: FONT,
-      fontSize: 24,
-      fontWeight: 700
+
+      color:
+        '#fff',
+
+      fontFamily:
+        FONT,
+
+      fontSize:
+        20,
+
+      fontWeight:
+        800,
+
+      letterSpacing:
+        0.6,
     }}
   >
     {children}
@@ -299,50 +467,89 @@ const Badge = ({
 );
 
 
+// ======================================================
+// SMALL CHECK ROW
+// ======================================================
+
 const CheckRow = ({
   text,
-  active = true
+  active = true,
 }) => (
   <div
     style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: 16,
-      marginTop: 20
+      display:
+        'flex',
+
+      alignItems:
+        'center',
+
+      gap:
+        14,
+
+      marginTop:
+        18,
     }}
   >
     <div
       style={{
-        width: 34,
-        height: 34,
-        borderRadius: 10,
+        width:
+          28,
+
+        height:
+          28,
+
+        borderRadius:
+          9,
+
+        display:
+          'flex',
+
+        alignItems:
+          'center',
+
+        justifyContent:
+          'center',
+
         background:
           active
-            ? 'rgba(22,221,178,0.22)'
-            : 'rgba(255,104,116,0.20)',
+            ? 'rgba(25,214,163,.18)'
+            : 'rgba(255,102,118,.18)',
+
         border:
           active
-            ? '1px solid rgba(22,221,178,0.60)'
-            : '1px solid rgba(255,104,116,0.60)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 22,
+            ? '1px solid rgba(25,214,163,.52)'
+            : '1px solid rgba(255,102,118,.52)',
+
         color:
           active
             ? COLORS.green
-            : COLORS.red
+            : COLORS.red,
+
+        fontSize:
+          18,
+
+        fontWeight:
+          900,
       }}
     >
-      {active ? '✓' : '!'}
+      {active
+        ? '✓'
+        : '×'}
     </div>
 
     <div
       style={{
-        fontFamily: FONT,
-        fontSize: 30,
-        color: '#fff',
-        fontWeight: 650
+        color:
+          '#fff',
+
+        fontFamily:
+          FONT,
+
+        fontSize:
+          27,
+
+        fontWeight:
+          650,
       }}
     >
       {text}
@@ -352,93 +559,120 @@ const CheckRow = ({
 
 
 // ======================================================
-// STOCK BACKGROUND
+// SECTION LABEL
 // ======================================================
 
-const StockBackground = ({
-  shot,
-  darken = 0.42,
-  blur = 0
-}) => {
+const SectionLabel = ({
+  children,
+  color = COLORS.cyan,
+}) => (
+  <div
+    style={{
+      display:
+        'flex',
 
-  const frame =
-    useCurrentFrame();
+      alignItems:
+        'center',
 
-  const duration =
-    getDurationFrames(shot);
+      gap:
+        12,
 
-  const src =
-    getStockUrl(shot);
+      fontFamily:
+        FONT,
 
-  const zoom =
-    interpolate(
-      frame,
-      [0, duration],
-      [1.02, 1.08],
-      {
-        extrapolateRight: 'clamp'
-      }
-    );
+      color:
+        'rgba(255,255,255,.72)',
 
-  if (!src) {
-    return null;
-  }
+      fontWeight:
+        850,
 
-  return (
-    <>
-      <AbsoluteFill
-        style={{
-          overflow: 'hidden'
-        }}
-      >
-        <Video
-          src={src}
-          muted
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            transform:
-              `scale(${zoom})`,
-            filter:
-              blur > 0
-                ? `blur(${blur}px)`
-                : undefined
-          }}
-        />
-      </AbsoluteFill>
+      fontSize:
+        20,
 
-      <AbsoluteFill
-        style={{
-          background:
-            `linear-gradient(90deg,rgba(4,7,13,${darken + 0.18}) 0%,rgba(4,7,13,${darken}) 48%,rgba(4,7,13,${darken + 0.08}) 100%)`
-        }}
-      />
-    </>
-  );
-};
+      letterSpacing:
+        2.4,
+
+      textTransform:
+        'uppercase',
+    }}
+  >
+    <div
+      style={{
+        width:
+          36,
+
+        height:
+          4,
+
+        borderRadius:
+          999,
+
+        background:
+          color,
+
+        boxShadow:
+          `0 0 22px ${color}88`,
+      }}
+    />
+
+    {children}
+  </div>
+);
 
 
 // ======================================================
-// 1. HOOK TRANSFORMATION — CINEMATIC V4.3
+// HERO TITLE
 // ======================================================
-//
-// OBJETIVO:
-// - Evitar una "diapositiva animada".
-// - Crear un hook con fases visuales claras.
-// - Usar stock si existe.
-// - Mostrar caos -> transformación -> sistema.
-// - Mantener movimiento durante toda la escena.
-//
-// FASES:
-// 0-22%  : caos / tensión
-// 22-48% : ruptura / transición
-// 48-78% : reorganización
-// 78-100%: payoff final
+
+const HeroTitle = ({
+  children,
+  size = 76,
+  width = 900,
+  align = 'left',
+}) => (
+  <div
+    style={{
+      maxWidth:
+        width,
+
+      color:
+        '#fff',
+
+      fontFamily:
+        FONT,
+
+      fontSize:
+        size,
+
+      lineHeight:
+        0.98,
+
+      fontWeight:
+        900,
+
+      letterSpacing:
+        -2.6,
+
+      textAlign:
+        align,
+
+      textShadow:
+        '0 15px 48px rgba(0,0,0,.55)',
+    }}
+  >
+    {children}
+  </div>
+);
+
+
+// ======================================================
+// ======================================================
+// 1. HOOK — CINEMATIC REAL VIDEO
+// ======================================================
 // ======================================================
 
 const HookTransformation = ({
-  shot
+  shot,
 }) => {
 
   const frame =
@@ -446,2052 +680,3098 @@ const HookTransformation = ({
 
   const {
     fps,
-    durationInFrames
   } =
     useVideoConfig();
 
   const duration =
-    Math.max(
-      1,
-      Number(
-        shot?.durationFrames ||
-        durationInFrames ||
-        1
-      )
+    getDurationFrames(
+      shot
     );
-
-  const stockUrl =
-    getStockUrl(shot);
-
-  const text =
-    getTextElements(shot);
-
-  const headline =
-    text[0] ||
-    getHeadline(shot) ||
-    'Convierte caos en un sistema útil';
 
   const progress =
     clamp(
-      frame / duration,
+      frame /
+      duration,
       0,
       1
     );
 
-  const chaosFade =
-    interpolate(
-      progress,
-      [0, 0.14, 0.34, 0.48],
-      [0, 1, 1, 0],
-      {
-        extrapolateLeft: 'clamp',
-        extrapolateRight: 'clamp'
-      }
+  const stockUrl =
+    getStockUrl(
+      shot
     );
 
-  const impactFlash =
-    interpolate(
-      progress,
-      [0.20, 0.235, 0.27],
-      [0, 0.92, 0],
-      {
-        extrapolateLeft: 'clamp',
-        extrapolateRight: 'clamp'
-      }
+  const texts =
+    getTextElements(
+      shot
     );
 
-  const systemReveal =
-    interpolate(
-      progress,
-      [0.39, 0.53, 0.82],
-      [0, 1, 1],
-      {
-        extrapolateLeft: 'clamp',
-        extrapolateRight: 'clamp'
-      }
-    );
+  const firstText =
+    texts[0] ||
+    'Tus notas son ruido';
 
-  const payoffReveal =
-    interpolate(
-      progress,
-      [0.68, 0.80, 1],
-      [0, 1, 1],
-      {
-        extrapolateLeft: 'clamp',
-        extrapolateRight: 'clamp'
-      }
-    );
+  const secondText =
+    texts[1] ||
+    'Convierte el proceso en un asistente';
 
-  const backgroundScale =
-    interpolate(
-      progress,
-      [0, 1],
-      [1.04, 1.14],
-      {
-        extrapolateRight: 'clamp'
-      }
-    );
-
-  const cameraX =
-    Math.sin(
-      frame / 11
-    ) * 12;
-
-  const chaosShake =
-    progress < 0.34
-      ? Math.sin(frame * 1.9) * 5
-      : 0;
 
   const titleSpring =
     spring({
       frame,
       fps,
       config: {
-        damping: 13,
-        stiffness: 130,
-        mass: 0.8
-      }
+        damping: 15,
+        stiffness: 110,
+        mass: 0.85,
+      },
     });
 
-  const titleScale =
-    0.88 +
-    titleSpring * 0.12;
 
-  const titleY =
-    interpolate(
-      titleSpring,
-      [0, 1],
-      [46, 0]
+  const chaosOpacity =
+    fadeInOut(
+      progress,
+      0,
+      0.03,
+      0.25,
+      0.39
     );
 
-  const systemSpring =
-    spring({
-      frame:
-        frame -
-        Math.round(
-          duration * 0.43
-        ),
-      fps,
-      config: {
-        damping: 14,
-        stiffness: 120
+
+  const transformationOpacity =
+    fadeInOut(
+      progress,
+      0.28,
+      0.38,
+      0.64,
+      0.73
+    );
+
+
+  const payoff =
+    interpolate(
+      progress,
+      [
+        0.60,
+        0.74,
+        1,
+      ],
+      [
+        0,
+        1,
+        1,
+      ],
+      {
+        extrapolateLeft:
+          'clamp',
+
+        extrapolateRight:
+          'clamp',
       }
-    });
+    );
 
-  const systemScale =
-    0.86 +
-    systemSpring * 0.14;
-
-  const chaosCards = [
-    {
-      label: 'Notas sueltas',
-      x: 90,
-      y: 265,
-      r: -8,
-      tone: COLORS.red
-    },
-    {
-      label: '¿Quién hace qué?',
-      x: 430,
-      y: 180,
-      r: 6,
-      tone: COLORS.amber
-    },
-    {
-      label: 'Tareas manuales',
-      x: 230,
-      y: 525,
-      r: 9,
-      tone: COLORS.red
-    },
-    {
-      label: 'Sin contexto',
-      x: 690,
-      y: 420,
-      r: -5,
-      tone: COLORS.amber
-    },
-    {
-      label: 'Repetir otra vez',
-      x: 520,
-      y: 650,
-      r: 7,
-      tone: COLORS.red
-    }
-  ];
-
-  const systemSteps = [
-    {
-      label: 'ENTRADA',
-      value: 'Notas + contexto',
-      color: COLORS.blue
-    },
-    {
-      label: 'CRITERIO',
-      value: 'Reglas claras',
-      color: COLORS.cyan
-    },
-    {
-      label: 'RESULTADO',
-      value: 'Resumen + tareas',
-      color: COLORS.green
-    }
-  ];
 
   return (
     <AbsoluteFill
       style={{
         background:
-          COLORS.bg0,
+          COLORS.bg,
+
         overflow:
-          'hidden'
+          'hidden',
       }}
     >
 
       {stockUrl
         ? (
-          <AbsoluteFill
-            style={{
-              transform:
-                `translateX(${cameraX}px) scale(${backgroundScale})`,
-              filter:
-                progress < 0.46
-                  ? 'saturate(.70) contrast(1.12) brightness(.62)'
-                  : 'saturate(.92) contrast(1.07) brightness(.68)'
-            }}
-          >
-            <Video
-              src={stockUrl}
-              muted
-              style={{
-                width:
-                  '100%',
-                height:
-                  '100%',
-                objectFit:
-                  'cover'
-              }}
-            />
-          </AbsoluteFill>
+          <CinematicVideo
+            shot={shot}
+            darkness={0.10}
+            saturation={1.08}
+            contrast={1.07}
+            zoomStart={1.01}
+            zoomEnd={1.10}
+          />
         )
         : (
           <>
             <BaseBackground />
 
-            <AbsoluteFill
-              style={{
-                transform:
-                  `translateX(${cameraX}px) scale(${backgroundScale})`,
-                background:
-                  'radial-gradient(circle at 18% 22%, rgba(255,104,116,.18), transparent 24%), radial-gradient(circle at 78% 68%, rgba(22,221,178,.18), transparent 27%), radial-gradient(circle at 54% 48%, rgba(109,124,255,.16), transparent 34%)'
-              }}
+            <AmbientGlow
+              left="68%"
+              top="42%"
+              size={1200}
+              color="41,211,255"
+              opacity={0.19}
+            />
+
+            <Grid
+              opacity={0.04}
             />
           </>
         )}
 
+
+      {/* LEFT READABILITY GRADIENT */}
+
       <AbsoluteFill
         style={{
           background:
-            'linear-gradient(90deg,rgba(3,5,10,.92) 0%,rgba(3,5,10,.58) 42%,rgba(3,5,10,.82) 100%)'
+            'linear-gradient(90deg,rgba(3,5,9,.74) 0%,rgba(3,5,9,.30) 40%,rgba(3,5,9,.04) 72%,rgba(3,5,9,.10) 100%)',
         }}
       />
 
-      <Grid
-        opacity={0.045}
+
+      {/* CINEMATIC TOP/BOTTOM */}
+
+      <div
+        style={{
+          position:
+            'absolute',
+
+          left:
+            0,
+
+          right:
+            0,
+
+          top:
+            0,
+
+          height:
+            18,
+
+          background:
+            '#000',
+        }}
       />
 
-      <AmbientGlow
-        left="22%"
-        top="34%"
-        size={900}
-        color="255,104,116"
-        opacity={0.14}
+      <div
+        style={{
+          position:
+            'absolute',
+
+          left:
+            0,
+
+          right:
+            0,
+
+          bottom:
+            0,
+
+          height:
+            18,
+
+          background:
+            '#000',
+        }}
       />
 
-      <AmbientGlow
-        left="77%"
-        top="67%"
-        size={980}
-        color="22,221,178"
-        opacity={0.15}
-      />
+
+      {/* PHASE 1 */}
 
       <AbsoluteFill
         style={{
           opacity:
-            chaosFade,
-          transform:
-            `translate(${chaosShake}px, ${-chaosShake * 0.55}px)`
+            chaosOpacity,
         }}
       >
+
         <div
           style={{
             position:
               'absolute',
+
             left:
               92,
+
             top:
-              72,
-            display:
-              'flex',
-            alignItems:
-              'center',
-            gap:
-              15
+              86,
           }}
         >
-          <div
-            style={{
-              width:
-                12,
-              height:
-                12,
-              borderRadius:
-                999,
-              background:
-                COLORS.red,
-              boxShadow:
-                '0 0 28px rgba(255,104,116,.75)'
-            }}
-          />
+          <SectionLabel
+            color={COLORS.red}
+          >
+            EL PROBLEMA
+          </SectionLabel>
+        </div>
+
+
+        <div
+          style={{
+            position:
+              'absolute',
+
+            left:
+              92,
+
+            bottom:
+              118,
+
+            transform:
+              `translateY(${(1 - titleSpring) * 44}px)`,
+
+            opacity:
+              titleSpring,
+          }}
+        >
+          <HeroTitle
+            size={84}
+            width={850}
+          >
+            {firstText}
+          </HeroTitle>
+
 
           <div
             style={{
+              marginTop:
+                22,
+
+              maxWidth:
+                680,
+
+              fontFamily:
+                FONT,
+
               color:
                 'rgba(255,255,255,.72)',
-              fontFamily:
-                FONT,
+
               fontSize:
-                24,
+                30,
+
+              lineHeight:
+                1.35,
+
               fontWeight:
-                800,
-              letterSpacing:
-                2
+                600,
             }}
           >
-            DEMASIADO CAOS
+            Notas dispersas, tareas sin dueño y
+            contexto que se pierde.
           </div>
         </div>
 
-        {chaosCards.map(
-          (
-            card,
-            index
-          ) => {
 
-            const cardDelay =
-              index * 3;
+        {/* ONLY TWO CARDS — NOT FIVE */}
 
-            const cardSpring =
-              spring({
-                frame:
-                  frame -
-                  cardDelay,
-                fps,
-                config: {
-                  damping:
-                    11,
-                  stiffness:
-                    145
-                }
-              });
-
-            const float =
-              Math.sin(
-                (
-                  frame +
-                  index * 11
-                ) /
-                9
-              ) *
-              11;
-
-            return (
-              <div
-                key={
-                  card.label
-                }
-                style={{
-                  position:
-                    'absolute',
-                  left:
-                    card.x,
-                  top:
-                    card.y +
-                    float,
-                  padding:
-                    '20px 28px',
-                  minWidth:
-                    265,
-                  borderRadius:
-                    18,
-                  background:
-                    'rgba(12,16,27,.92)',
-                  border:
-                    `1px solid ${card.tone}66`,
-                  boxShadow:
-                    `0 20px 60px rgba(0,0,0,.40), 0 0 30px ${card.tone}18`,
-                  color:
-                    '#fff',
-                  fontFamily:
-                    FONT,
-                  fontSize:
-                    29,
-                  fontWeight:
-                    800,
-                  transform:
-                    `scale(${0.78 + cardSpring * 0.22}) rotate(${card.r}deg)`,
-                  opacity:
-                    cardSpring
-                }}
-              >
-                {card.label}
-              </div>
-            );
-          }
-        )}
-
-        <div
+        <GlassPanel
           style={{
             position:
               'absolute',
+
             right:
-              90,
+              100,
+
             top:
-              155,
+              130,
+
             width:
-              760,
-            fontFamily:
-              FONT,
-            fontSize:
-              78,
-            lineHeight:
-              1.02,
-            fontWeight:
-              900,
-            color:
-              '#fff',
-            letterSpacing:
-              '-2px',
+              320,
+
+            padding:
+              '22px 26px',
+
             transform:
-              `translateY(${titleY}px) scale(${titleScale})`,
-            transformOrigin:
-              'right center',
-            textAlign:
-              'right',
-            textShadow:
-              '0 16px 45px rgba(0,0,0,.65)'
+              `rotate(-3deg) translateY(${Math.sin(frame / 9) * 8}px)`,
+
+            border:
+              '1px solid rgba(255,102,118,.40)',
           }}
         >
-          {headline}
-        </div>
+          <div
+            style={{
+              fontFamily:
+                FONT,
 
-        <div
+              color:
+                COLORS.red,
+
+              fontSize:
+                17,
+
+              fontWeight:
+                900,
+
+              letterSpacing:
+                1.5,
+            }}
+          >
+            PENDIENTE
+          </div>
+
+          <div
+            style={{
+              marginTop:
+                12,
+
+              fontFamily:
+                FONT,
+
+              color:
+                '#fff',
+
+              fontSize:
+                29,
+
+              fontWeight:
+                800,
+            }}
+          >
+            ¿Quién hace qué?
+          </div>
+        </GlassPanel>
+
+
+        <GlassPanel
           style={{
             position:
               'absolute',
+
             right:
-              94,
-            top:
-              360,
-            maxWidth:
-              680,
-            fontFamily:
-              FONT,
-            fontSize:
-              31,
-            lineHeight:
-              1.35,
-            fontWeight:
-              650,
-            color:
-              'rgba(255,255,255,.70)',
-            textAlign:
-              'right'
+              145,
+
+            bottom:
+              150,
+
+            width:
+              340,
+
+            padding:
+              '22px 26px',
+
+            transform:
+              `rotate(3deg) translateY(${Math.sin((frame + 15) / 10) * 8}px)`,
+
+            border:
+              '1px solid rgba(255,189,89,.38)',
           }}
         >
-          Cuando todo depende de notas dispersas,
-          memoria y repetir instrucciones,
-          el trabajo se vuelve ruido.
-        </div>
+          <div
+            style={{
+              fontFamily:
+                FONT,
+
+              color:
+                COLORS.amber,
+
+              fontSize:
+                17,
+
+              fontWeight:
+                900,
+
+              letterSpacing:
+                1.5,
+            }}
+          >
+            SIN ESTRUCTURA
+          </div>
+
+          <div
+            style={{
+              marginTop:
+                12,
+
+              fontFamily:
+                FONT,
+
+              color:
+                '#fff',
+
+              fontSize:
+                29,
+
+              fontWeight:
+                800,
+            }}
+          >
+            Repetir otra vez
+          </div>
+        </GlassPanel>
+
       </AbsoluteFill>
 
-      <AbsoluteFill
-        style={{
-          opacity:
-            impactFlash,
-          background:
-            'linear-gradient(115deg,rgba(255,255,255,.97),rgba(109,124,255,.86),rgba(41,211,255,.68))',
-          mixBlendMode:
-            'screen'
-        }}
-      />
 
-      {progress > 0.20 &&
-      progress < 0.42
-        ? (
-          <>
-            {[
-              0,
-              1,
-              2,
-              3,
-              4,
-              5
-            ].map(
-              (
-                index
-              ) => (
-                <div
-                  key={
-                    index
-                  }
-                  style={{
-                    position:
-                      'absolute',
-                    left:
-                      `${7 + index * 17}%`,
-                    top:
-                      -80,
-                    width:
-                      12 +
-                      index * 4,
-                    height:
-                      1240,
-                    background:
-                      index % 2 === 0
-                        ? 'rgba(109,124,255,.16)'
-                        : 'rgba(41,211,255,.10)',
-                    transform:
-                      `rotate(18deg) translateX(${(progress - .20) * 900}px)`,
-                    filter:
-                      'blur(1px)'
-                  }}
-                />
-              )
-            )}
-          </>
-        )
-        : null}
+      {/* PHASE 2 — TRANSFORMATION */}
 
       <AbsoluteFill
         style={{
           opacity:
-            systemReveal
+            transformationOpacity,
         }}
       >
+
+        <AmbientGlow
+          left="55%"
+          top="50%"
+          size={1100}
+          color="41,211,255"
+          opacity={0.17}
+        />
+
+
         <div
           style={{
             position:
               'absolute',
+
             left:
-              90,
+              92,
+
             top:
-              70,
-            display:
-              'flex',
-            alignItems:
-              'center',
-            gap:
-              14
+              86,
           }}
         >
-          <div
-            style={{
-              width:
-                12,
-              height:
-                12,
-              borderRadius:
-                999,
-              background:
-                COLORS.green,
-              boxShadow:
-                '0 0 28px rgba(22,221,178,.82)'
-            }}
-          />
-
-          <div
-            style={{
-              color:
-                'rgba(255,255,255,.75)',
-              fontFamily:
-                FONT,
-              fontSize:
-                24,
-              fontWeight:
-                800,
-              letterSpacing:
-                2
-            }}
-          >
-            AHORA HAY SISTEMA
-          </div>
+          <SectionLabel>
+            TRANSFORMA
+          </SectionLabel>
         </div>
+
+
+        <div
+          style={{
+            position:
+              'absolute',
+
+            left:
+              92,
+
+            top:
+              215,
+
+            width:
+              700,
+          }}
+        >
+          <HeroTitle
+            size={75}
+          >
+            De información suelta a un sistema claro.
+          </HeroTitle>
+        </div>
+
+
+        <div
+          style={{
+            position:
+              'absolute',
+
+            left:
+              95,
+
+            right:
+              95,
+
+            bottom:
+              110,
+
+            display:
+              'grid',
+
+            gridTemplateColumns:
+              '1fr 100px 1fr 100px 1fr',
+
+            alignItems:
+              'center',
+
+            gap:
+              14,
+          }}
+        >
+
+          {[
+            {
+              label:
+                'ENTRADA',
+
+              value:
+                'Notas + contexto',
+
+              color:
+                COLORS.blue,
+            },
+
+            {
+              label:
+                'REGLAS',
+
+              value:
+                'Criterios claros',
+
+              color:
+                COLORS.cyan,
+            },
+
+            {
+              label:
+                'SALIDA',
+
+              value:
+                'Tareas concretas',
+
+              color:
+                COLORS.green,
+            },
+          ].map(
+            (
+              item,
+              index
+            ) => (
+
+              <React.Fragment
+                key={
+                  item.label
+                }
+              >
+
+                <GlassPanel
+                  style={{
+                    padding:
+                      '26px 28px',
+
+                    minHeight:
+                      135,
+
+                    transform:
+                      `translateY(${Math.sin((frame + index * 9) / 14) * 4}px)`,
+                  }}
+                >
+                  <div
+                    style={{
+                      color:
+                        item.color,
+
+                      fontFamily:
+                        FONT,
+
+                      fontSize:
+                        18,
+
+                      fontWeight:
+                        900,
+
+                      letterSpacing:
+                        1.7,
+                    }}
+                  >
+                    {item.label}
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop:
+                        14,
+
+                      color:
+                        '#fff',
+
+                      fontFamily:
+                        FONT,
+
+                      fontSize:
+                        31,
+
+                      fontWeight:
+                        800,
+                    }}
+                  >
+                    {item.value}
+                  </div>
+                </GlassPanel>
+
+
+                {index < 2
+                  ? (
+                    <div
+                      style={{
+                        textAlign:
+                          'center',
+
+                        fontFamily:
+                          FONT,
+
+                        color:
+                          COLORS.cyan,
+
+                        fontSize:
+                          46,
+
+                        fontWeight:
+                          900,
+
+                        opacity:
+                          0.78,
+                      }}
+                    >
+                      →
+                    </div>
+                  )
+                  : null}
+
+              </React.Fragment>
+            )
+          )}
+
+        </div>
+
+      </AbsoluteFill>
+
+
+      {/* PHASE 3 — PAYOFF */}
+
+      <AbsoluteFill
+        style={{
+          opacity:
+            payoff,
+        }}
+      >
 
         <AbsoluteFill
           style={{
-            justifyContent:
-              'center',
-            alignItems:
-              'center',
-            padding:
-              '145px 95px 70px'
+            background:
+              'linear-gradient(90deg,rgba(3,5,9,.76) 0%,rgba(3,5,9,.32) 47%,rgba(3,5,9,.06) 100%)',
           }}
-        >
-          <div
-            style={{
-              width:
-                '100%',
-              display:
-                'grid',
-              gridTemplateColumns:
-                '1fr 130px 1fr 130px 1fr',
-              alignItems:
-                'center',
-              transform:
-                `scale(${systemScale})`
-            }}
-          >
-            {systemSteps.map(
-              (
-                step,
-                index
-              ) => {
+        />
 
-                const local =
-                  spring({
-                    frame:
-                      frame -
-                      Math.round(
-                        duration *
-                        (
-                          0.44 +
-                          index *
-                          0.07
-                        )
-                      ),
-                    fps,
-                    config: {
-                      damping:
-                        14,
-                      stiffness:
-                        125
-                    }
-                  });
 
-                return (
-                  <React.Fragment
-                    key={
-                      step.label
-                    }
-                  >
-                    <GlassCard
-                      style={{
-                        height:
-                          360,
-                        padding:
-                          34,
-                        opacity:
-                          local,
-                        transform:
-                          `translateY(${(1 - local) * 60}px) scale(${0.92 + local * 0.08})`,
-                        border:
-                          `1px solid ${step.color}55`,
-                        boxShadow:
-                          `0 30px 90px rgba(0,0,0,.42), 0 0 55px ${step.color}18`
-                      }}
-                    >
-                      <div
-                        style={{
-                          width:
-                            54,
-                          height:
-                            54,
-                          borderRadius:
-                            16,
-                          background:
-                            `${step.color}22`,
-                          border:
-                            `1px solid ${step.color}77`,
-                          display:
-                            'flex',
-                          alignItems:
-                            'center',
-                          justifyContent:
-                            'center',
-                          color:
-                            step.color,
-                          fontFamily:
-                            FONT,
-                          fontSize:
-                            26,
-                          fontWeight:
-                            900
-                        }}
-                      >
-                        {index + 1}
-                      </div>
-
-                      <div
-                        style={{
-                          marginTop:
-                            36,
-                          color:
-                            'rgba(255,255,255,.55)',
-                          fontFamily:
-                            FONT,
-                          fontSize:
-                            22,
-                          fontWeight:
-                            800,
-                          letterSpacing:
-                            2
-                        }}
-                      >
-                        {step.label}
-                      </div>
-
-                      <div
-                        style={{
-                          marginTop:
-                            18,
-                          color:
-                            '#fff',
-                          fontFamily:
-                            FONT,
-                          fontSize:
-                            39,
-                          lineHeight:
-                            1.08,
-                          fontWeight:
-                            900
-                        }}
-                      >
-                        {step.value}
-                      </div>
-                    </GlassCard>
-
-                    {index <
-                    systemSteps.length -
-                      1
-                      ? (
-                        <div
-                          style={{
-                            textAlign:
-                              'center',
-                            fontSize:
-                              68,
-                            color:
-                              'rgba(255,255,255,.45)',
-                            transform:
-                              `scale(${0.90 + local * 0.10})`
-                          }}
-                        >
-                          →
-                        </div>
-                      )
-                      : null}
-                  </React.Fragment>
-                );
-              }
-            )}
-          </div>
-        </AbsoluteFill>
-      </AbsoluteFill>
-
-      <AbsoluteFill
-        style={{
-          opacity:
-            payoffReveal,
-          pointerEvents:
-            'none'
-        }}
-      >
         <div
           style={{
             position:
               'absolute',
+
             left:
-              '50%',
-            bottom:
-              66,
-            transform:
-              'translateX(-50%)',
-            width:
-              1320,
-            padding:
-              '20px 34px',
-            borderRadius:
-              22,
-            background:
-              'rgba(5,9,16,.84)',
-            border:
-              '1px solid rgba(22,221,178,.30)',
-            boxShadow:
-              '0 22px 70px rgba(0,0,0,.40)',
-            backdropFilter:
-              'blur(10px)',
-            display:
-              'flex',
-            alignItems:
-              'center',
-            justifyContent:
-              'space-between'
+              92,
+
+            top:
+              88,
           }}
         >
+          <SectionLabel
+            color={COLORS.green}
+          >
+            RESULTADO
+          </SectionLabel>
+        </div>
+
+
+        <div
+          style={{
+            position:
+              'absolute',
+
+            left:
+              92,
+
+            top:
+              205,
+          }}
+        >
+          <HeroTitle
+            size={82}
+            width={900}
+          >
+            {secondText}
+          </HeroTitle>
+
+
           <div
             style={{
-              fontFamily:
-                FONT,
-              fontSize:
-                31,
-              fontWeight:
-                900,
-              color:
-                '#fff'
+              marginTop:
+                28,
+
+              display:
+                'flex',
+
+              gap:
+                14,
             }}
           >
-            Una instrucción clara puede convertirse en un sistema reutilizable.
+            <Badge
+              color={COLORS.green}
+            >
+              CLARO
+            </Badge>
+
+            <Badge
+              color={COLORS.cyan}
+            >
+              REUTILIZABLE
+            </Badge>
+
+            <Badge
+              color={COLORS.blue}
+            >
+              MEDIBLE
+            </Badge>
           </div>
-
-          <Badge
-            color={
-              COLORS.green
-            }
-          >
-            LISTO PARA REPETIR
-          </Badge>
         </div>
-      </AbsoluteFill>
 
-      <AbsoluteFill
-        style={{
-          boxShadow:
-            'inset 0 0 180px rgba(0,0,0,.78)',
-          pointerEvents:
-            'none'
-        }}
-      />
+      </AbsoluteFill>
 
     </AbsoluteFill>
   );
 };
+
+
 // ======================================================
-// 2. STOCK + UI INTRO
+// ======================================================
+// 2. INTRO — STOCK + UI, VIDEO DOMINANT
+// ======================================================
 // ======================================================
 
 const StockPlusUI = ({
-  shot
+  shot,
 }) => {
 
   const frame =
     useCurrentFrame();
 
-  const {fps} =
+  const {
+    fps,
+  } =
     useVideoConfig();
 
-  const enter =
+
+  const reveal =
     spring({
       frame,
       fps,
       config: {
         damping: 16,
-        stiffness: 100
-      }
+        stiffness: 95,
+      },
     });
 
-  const text =
-    getTextElements(shot);
 
   return (
-    <AbsoluteFill>
-      <BaseBackground />
+    <AbsoluteFill
+      style={{
+        background:
+          COLORS.bg,
+      }}
+    >
 
-      <StockBackground
+      <CinematicVideo
         shot={shot}
-        darken={0.46}
+        darkness={0.12}
+        saturation={1.06}
+        contrast={1.05}
+        zoomStart={1.015}
+        zoomEnd={1.07}
       />
+
 
       <AbsoluteFill
         style={{
-          padding:
-            '95px 110px',
-          justifyContent:
-            'center'
+          background:
+            'linear-gradient(90deg,rgba(3,5,9,.16) 0%,rgba(3,5,9,.12) 52%,rgba(3,5,9,.82) 100%)',
+        }}
+      />
+
+
+      <div
+        style={{
+          position:
+            'absolute',
+
+          left:
+            85,
+
+          top:
+            80,
         }}
       >
-        <div
-          style={{
-            maxWidth: 760
-          }}
+        <SectionLabel>
+          DE RESPUESTA A ASISTENTE
+        </SectionLabel>
+      </div>
+
+
+      <div
+        style={{
+          position:
+            'absolute',
+
+          left:
+            85,
+
+          bottom:
+            95,
+
+          width:
+            780,
+
+          transform:
+            `translateY(${(1 - reveal) * 30}px)`,
+
+          opacity:
+            reveal,
+        }}
+      >
+        <HeroTitle
+          size={70}
         >
-          <Badge>
-            WORKFLOW
-          </Badge>
+          Define el trabajo antes de elegir la herramienta.
+        </HeroTitle>
+      </div>
 
-          <div
-            style={{
-              marginTop: 28,
-              fontFamily: FONT,
-              fontSize: 76,
-              lineHeight: 1.02,
-              fontWeight: 850,
-              color: '#fff',
-              textShadow:
-                '0 12px 34px rgba(0,0,0,.6)'
-            }}
-          >
-            {getHeadline(shot)}
-          </div>
 
-          <div
-            style={{
-              marginTop: 42,
-              display: 'grid',
-              gap: 16
-            }}
-          >
-            {[
-              text[0] ||
-                'Elige la herramienta',
-              text[1] ||
-                'Dale instrucciones claras'
-            ].map(
-              (
-                label,
-                index
-              ) => (
-                <GlassCard
-                  key={index}
-                  style={{
-                    padding:
-                      '22px 26px',
-                    transform:
-                      `translateX(${(1 - enter) * (70 + index * 30)}px)`,
-                    opacity: enter
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 18
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 14,
-                        background:
-                          index === 0
-                            ? COLORS.blue
-                            : COLORS.green,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#fff',
-                        fontFamily: FONT,
-                        fontWeight: 800
-                      }}
-                    >
-                      {index + 1}
-                    </div>
+      <GlassPanel
+        style={{
+          position:
+            'absolute',
 
-                    <div
-                      style={{
-                        fontFamily: FONT,
-                        fontSize: 34,
-                        fontWeight: 750,
-                        color: '#fff'
-                      }}
-                    >
-                      {label}
-                    </div>
-                  </div>
-                </GlassCard>
-              )
-            )}
-          </div>
-        </div>
-      </AbsoluteFill>
+          right:
+            72,
+
+          top:
+            130,
+
+          width:
+            500,
+
+          padding:
+            '30px 34px',
+
+          transform:
+            `translateX(${(1 - reveal) * 70}px)`,
+
+          opacity:
+            reveal,
+        }}
+      >
+        <Badge
+          color={COLORS.blue}
+        >
+          3 CLAVES
+        </Badge>
+
+        <CheckRow
+          text="Objetivo claro"
+        />
+
+        <CheckRow
+          text="Contexto suficiente"
+        />
+
+        <CheckRow
+          text="Formato de salida"
+        />
+      </GlassPanel>
+
     </AbsoluteFill>
   );
 };
 
 
 // ======================================================
-// 3. NOTES TO STRUCTURE
+// ======================================================
+// 3. NOTES → STRUCTURE
+// ======================================================
 // ======================================================
 
 const NotesToStructure = ({
-  shot
+  shot,
 }) => {
 
   const frame =
     useCurrentFrame();
 
-  const {fps} =
+  const {
+    fps,
+  } =
     useVideoConfig();
 
-  const reveal =
+
+  const leftReveal =
     spring({
-      frame:
-        frame - 8,
+      frame,
       fps,
       config: {
-        damping: 15,
-        stiffness: 105
-      }
+        damping:
+          15,
+
+        stiffness:
+          105,
+      },
     });
 
+
+  const rightReveal =
+    spring({
+      frame:
+        frame - 12,
+
+      fps,
+
+      config: {
+        damping:
+          15,
+
+        stiffness:
+          105,
+      },
+    });
+
+
   return (
-    <AbsoluteFill>
-      <BaseBackground />
+    <AbsoluteFill
+      style={{
+        background:
+          COLORS.bg,
+      }}
+    >
 
-      <StockBackground
+      <CinematicVideo
         shot={shot}
-        darken={0.62}
-        blur={1}
+        darkness={0.22}
+        saturation={0.96}
+        contrast={1.08}
+        zoomStart={1.02}
+        zoomEnd={1.065}
       />
 
-      <Grid
-        opacity={0.05}
-      />
 
       <AbsoluteFill
         style={{
-          padding:
-            '78px 92px'
+          background:
+            'linear-gradient(180deg,rgba(2,4,8,.15),rgba(2,4,8,.50))',
+        }}
+      />
+
+
+      <div
+        style={{
+          position:
+            'absolute',
+
+          left:
+            78,
+
+          top:
+            68,
         }}
       >
-        <div
-          style={{
-            fontFamily: FONT,
-            color: '#fff',
-            fontWeight: 850,
-            fontSize: 62
-          }}
+        <SectionLabel
+          color={COLORS.amber}
         >
-          {getHeadline(shot)}
-        </div>
+          DEL CAOS A LA ESTRUCTURA
+        </SectionLabel>
+      </div>
 
-        <div
+
+      <div
+        style={{
+          position:
+            'absolute',
+
+          left:
+            78,
+
+          right:
+            78,
+
+          top:
+            150,
+
+          bottom:
+            80,
+
+          display:
+            'grid',
+
+          gridTemplateColumns:
+            '0.95fr 100px 1.2fr',
+
+          alignItems:
+            'center',
+
+          gap:
+            20,
+        }}
+      >
+
+        {/* RAW */}
+
+        <GlassPanel
           style={{
-            marginTop: 52,
-            display: 'grid',
-            gridTemplateColumns:
-              '0.95fr 1.05fr',
-            gap: 34,
-            height: 760
+            padding:
+              32,
+
+            minHeight:
+              650,
+
+            opacity:
+              leftReveal,
+
+            transform:
+              `translateX(${(1 - leftReveal) * -60}px)`,
           }}
         >
-          <GlassCard
-            style={{
-              padding: 32,
-              overflow: 'hidden'
-            }}
+          <Badge
+            color={COLORS.red}
           >
-            <BrowserDots />
+            NOTAS ORIGINALES
+          </Badge>
 
-            <div
-              style={{
-                marginTop: 30,
-                fontFamily: FONT,
-                fontSize: 26,
-                color:
-                  COLORS.muted,
-                fontWeight: 700
-              }}
-            >
-              NOTAS DE REUNIÓN
-            </div>
-
-            {[
-              'Actualizar propuesta del cliente',
-              'Ana revisará presupuesto',
-              'Falta confirmar fecha',
-              'Preparar resumen ejecutivo',
-              'Enviar siguiente acción'
-            ].map(
-              (
-                label,
-                index
-              ) => (
-                <div
-                  key={label}
-                  style={{
-                    marginTop: 24,
-                    padding:
-                      '18px 20px',
-                    borderRadius: 14,
-                    background:
-                      'rgba(255,255,255,0.055)',
-                    color: '#fff',
-                    fontFamily: FONT,
-                    fontSize: 28,
-                    opacity:
-                      0.72 +
-                      index * 0.05
-                  }}
-                >
-                  {label}
-                </div>
-              )
-            )}
-          </GlassCard>
 
           <div
             style={{
-              display: 'grid',
-              gridTemplateRows:
-                'repeat(3,1fr)',
-              gap: 22,
-              opacity: reveal,
-              transform:
-                `translateX(${(1 - reveal) * 60}px)`
+              marginTop:
+                30,
+
+              fontFamily:
+                FONT,
+
+              color:
+                '#fff',
+
+              fontSize:
+                32,
+
+              fontWeight:
+                820,
             }}
           >
+            Reunión de proyecto
+          </div>
+
+
+          {[
+            'Revisar presupuesto',
+            'Confirmar responsable',
+            'Enviar propuesta',
+            'Pendiente fecha límite',
+            'Validar cambios',
+          ].map(
+            (
+              text,
+              index
+            ) => (
+              <div
+                key={
+                  text
+                }
+                style={{
+                  marginTop:
+                    20,
+
+                  padding:
+                    '18px 20px',
+
+                  borderRadius:
+                    16,
+
+                  background:
+                    index % 2 === 0
+                      ? 'rgba(255,102,118,.09)'
+                      : 'rgba(255,255,255,.055)',
+
+                  border:
+                    '1px solid rgba(255,255,255,.08)',
+
+                  color:
+                    'rgba(255,255,255,.78)',
+
+                  fontFamily:
+                    FONT,
+
+                  fontSize:
+                    27,
+                }}
+              >
+                • {text}
+              </div>
+            )
+          )}
+
+        </GlassPanel>
+
+
+        {/* ARROW */}
+
+        <div
+          style={{
+            fontFamily:
+              FONT,
+
+            color:
+              COLORS.cyan,
+
+            fontSize:
+              64,
+
+            fontWeight:
+              900,
+
+            textAlign:
+              'center',
+
+            textShadow:
+              '0 0 35px rgba(41,211,255,.40)',
+          }}
+        >
+          →
+        </div>
+
+
+        {/* STRUCTURED */}
+
+        <GlassPanel
+          style={{
+            padding:
+              32,
+
+            minHeight:
+              650,
+
+            opacity:
+              rightReveal,
+
+            transform:
+              `translateX(${(1 - rightReveal) * 70}px)`,
+          }}
+        >
+          <Badge
+            color={COLORS.green}
+          >
+            SALIDA ESTRUCTURADA
+          </Badge>
+
+
+          <div
+            style={{
+              marginTop:
+                30,
+
+              display:
+                'grid',
+
+              gridTemplateColumns:
+                '1fr 1fr',
+
+              gap:
+                16,
+            }}
+          >
+
             {[
-              {
-                title: 'ENTRADA',
-                text:
-                  'Notas, nombres y contexto'
-              },
-              {
-                title: 'RESULTADO',
-                text:
-                  'Resumen, decisiones y tareas'
-              },
-              {
-                title: 'LÍMITES',
-                text:
-                  'No inventar datos ausentes'
-              }
+              [
+                'FUNCIÓN',
+                'Organizar',
+                COLORS.blue,
+              ],
+
+              [
+                'CONTEXTO',
+                'Notas',
+                COLORS.cyan,
+              ],
+
+              [
+                'REGLAS',
+                'No inventar',
+                COLORS.amber,
+              ],
+
+              [
+                'FORMATO',
+                'Tabla',
+                COLORS.green,
+              ],
             ].map(
               (
-                item,
-                index
+                item
               ) => (
-                <GlassCard
-                  key={item.title}
+
+                <div
+                  key={
+                    item[0]
+                  }
                   style={{
-                    padding: 30,
-                    borderLeft:
-                      `5px solid ${
-                        [
-                          COLORS.blue,
-                          COLORS.green,
-                          COLORS.amber
-                        ][index]
-                      }`
+                    padding:
+                      '20px 22px',
+
+                    borderRadius:
+                      17,
+
+                    background:
+                      `${item[2]}16`,
+
+                    border:
+                      `1px solid ${item[2]}55`,
                   }}
                 >
                   <div
                     style={{
-                      fontFamily: FONT,
                       color:
-                        COLORS.muted,
-                      fontWeight: 800,
-                      fontSize: 23
+                        item[2],
+
+                      fontFamily:
+                        FONT,
+
+                      fontSize:
+                        17,
+
+                      fontWeight:
+                        900,
+
+                      letterSpacing:
+                        1.4,
                     }}
                   >
-                    {item.title}
+                    {item[0]}
                   </div>
 
                   <div
                     style={{
-                      marginTop: 16,
-                      fontFamily: FONT,
-                      color: '#fff',
-                      fontWeight: 800,
-                      fontSize: 36
+                      marginTop:
+                        8,
+
+                      color:
+                        '#fff',
+
+                      fontFamily:
+                        FONT,
+
+                      fontSize:
+                        27,
+
+                      fontWeight:
+                        780,
                     }}
                   >
-                    {item.text}
+                    {item[1]}
                   </div>
-                </GlassCard>
+                </div>
               )
             )}
+
           </div>
-        </div>
-      </AbsoluteFill>
+
+
+          <div
+            style={{
+              marginTop:
+                30,
+
+              padding:
+                '22px 24px',
+
+              borderRadius:
+                18,
+
+              background:
+                'rgba(25,214,163,.08)',
+
+              border:
+                '1px solid rgba(25,214,163,.28)',
+            }}
+          >
+            <CheckRow
+              text="Decisiones"
+            />
+
+            <CheckRow
+              text="Tareas"
+            />
+
+            <CheckRow
+              text="Responsable"
+            />
+
+            <CheckRow
+              text="Fecha límite"
+            />
+          </div>
+
+        </GlassPanel>
+
+      </div>
+
     </AbsoluteFill>
   );
 };
 
 
 // ======================================================
+// ======================================================
 // 4. GEMINI GEM SETUP
+// ======================================================
 // ======================================================
 
 const GeminiGemSetup = ({
-  shot
+  shot,
 }) => {
 
   const frame =
     useCurrentFrame();
 
-  const duration =
-    getDurationFrames(shot);
+  const {
+    fps,
+  } =
+    useVideoConfig();
+
+
+  const windowReveal =
+    spring({
+      frame,
+      fps,
+      config: {
+        damping:
+          16,
+
+        stiffness:
+          95,
+      },
+    });
+
 
   const step =
-    clamp(
+    Math.min(
+      2,
       Math.floor(
-        (
-          frame /
-          duration
-        ) *
-        3
-      ),
-      0,
-      2
+        frame / 250
+      )
     );
 
-  return (
-    <AbsoluteFill>
-      <BaseBackground />
 
-      <Grid
-        opacity={0.07}
-      />
+  return (
+    <AbsoluteFill
+      style={{
+        background:
+          COLORS.bg,
+      }}
+    >
+
+      <BaseBackground />
 
       <AmbientGlow
         left="70%"
-        top="38%"
+        top="40%"
+        size={1100}
         color="109,124,255"
-        opacity={0.16}
+        opacity={0.20}
       />
 
-      <AbsoluteFill
+      <Grid
+        opacity={0.035}
+      />
+
+
+      <div
         style={{
-          padding:
-            '70px 90px'
+          position:
+            'absolute',
+
+          left:
+            78,
+
+          top:
+            62,
         }}
       >
+        <SectionLabel
+          color={COLORS.blue}
+        >
+          GEMINI GEMS
+        </SectionLabel>
+      </div>
+
+
+      <GlassPanel
+        style={{
+          position:
+            'absolute',
+
+          left:
+            78,
+
+          right:
+            78,
+
+          top:
+            130,
+
+          bottom:
+            70,
+
+          overflow:
+            'hidden',
+
+          transform:
+            `scale(${0.97 + windowReveal * 0.03})`,
+
+          opacity:
+            windowReveal,
+        }}
+      >
+
+        {/* BROWSER BAR */}
+
         <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent:
-              'space-between'
+            height:
+              74,
+
+            display:
+              'flex',
+
+            alignItems:
+              'center',
+
+            padding:
+              '0 26px',
+
+            borderBottom:
+              '1px solid rgba(255,255,255,.10)',
+
+            background:
+              'rgba(255,255,255,.035)',
           }}
         >
           <div
             style={{
-              fontFamily: FONT,
-              fontSize: 58,
-              color: '#fff',
-              fontWeight: 850
+              display:
+                'flex',
+
+              gap:
+                10,
             }}
           >
-            Construye una Gem útil
+            {[
+              '#ff6676',
+              '#ffbd59',
+              '#19d6a3',
+            ].map(
+              color => (
+                <div
+                  key={
+                    color
+                  }
+                  style={{
+                    width:
+                      13,
+
+                    height:
+                      13,
+
+                    borderRadius:
+                      999,
+
+                    background:
+                      color,
+                  }}
+                />
+              )
+            )}
           </div>
 
-          <Badge>
-            GEMINI
-          </Badge>
+
+          <div
+            style={{
+              marginLeft:
+                26,
+
+              color:
+                'rgba(255,255,255,.45)',
+
+              fontFamily:
+                FONT,
+
+              fontSize:
+                19,
+            }}
+          >
+            Gemini · Crear Gem
+          </div>
         </div>
 
-        <GlassCard
+
+        <div
           style={{
-            marginTop: 38,
-            height: 800,
-            overflow: 'hidden'
+            display:
+              'grid',
+
+            gridTemplateColumns:
+              '330px 1fr',
+
+            height:
+              'calc(100% - 74px)',
           }}
         >
+
+          {/* SIDEBAR */}
+
           <div
             style={{
-              height: 70,
-              borderBottom:
-                `1px solid ${COLORS.border}`,
               padding:
-                '0 28px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent:
-                'space-between'
+                28,
+
+              borderRight:
+                '1px solid rgba(255,255,255,.08)',
+
+              background:
+                'rgba(0,0,0,.18)',
             }}
           >
-            <BrowserDots />
-
-            <div
-              style={{
-                fontFamily: FONT,
-                color:
-                  COLORS.muted,
-                fontSize: 22
-              }}
+            <Badge
+              color={COLORS.blue}
             >
-              Gemini · Gems
-            </div>
+              NUEVA GEM
+            </Badge>
+
+
+            {[
+              'Nombre',
+              'Instrucciones',
+              'Prueba',
+            ].map(
+              (
+                label,
+                index
+              ) => (
+
+                <div
+                  key={
+                    label
+                  }
+                  style={{
+                    marginTop:
+                      24,
+
+                    padding:
+                      '18px 18px',
+
+                    borderRadius:
+                      14,
+
+                    background:
+                      index === step
+                        ? 'rgba(109,124,255,.16)'
+                        : 'rgba(255,255,255,.035)',
+
+                    border:
+                      index === step
+                        ? '1px solid rgba(109,124,255,.45)'
+                        : '1px solid rgba(255,255,255,.07)',
+
+                    color:
+                      index === step
+                        ? '#fff'
+                        : 'rgba(255,255,255,.55)',
+
+                    fontFamily:
+                      FONT,
+
+                    fontSize:
+                      25,
+
+                    fontWeight:
+                      760,
+                  }}
+                >
+                  {index + 1}. {label}
+                </div>
+              )
+            )}
           </div>
 
+
+          {/* CONTENT */}
+
           <div
             style={{
-              display: 'grid',
-              gridTemplateColumns:
-                '320px 1fr',
-              height: 730
+              padding:
+                '34px 42px',
             }}
           >
+
             <div
               style={{
-                borderRight:
-                  `1px solid ${COLORS.border}`,
-                padding: 28
+                color:
+                  '#fff',
+
+                fontFamily:
+                  FONT,
+
+                fontSize:
+                  42,
+
+                fontWeight:
+                  850,
               }}
             >
-              {[
-                'Nueva Gem',
-                'Mis Gems',
-                'Actividad'
-              ].map(
-                (
-                  label,
-                  index
-                ) => (
-                  <div
-                    key={label}
-                    style={{
-                      marginTop:
-                        index === 0
-                          ? 0
-                          : 14,
-                      padding:
-                        '17px 18px',
-                      borderRadius: 14,
-                      background:
-                        index === 0
-                          ? 'rgba(109,124,255,0.20)'
-                          : 'transparent',
-                      color: '#fff',
-                      fontFamily: FONT,
-                      fontSize: 25,
-                      fontWeight:
-                        index === 0
-                          ? 800
-                          : 600
-                    }}
-                  >
-                    {label}
-                  </div>
-                )
-              )}
+              Organizador de reuniones
             </div>
 
+
             <div
               style={{
+                marginTop:
+                  28,
+
+                color:
+                  COLORS.textSoft,
+
+                fontFamily:
+                  FONT,
+
+                fontSize:
+                  22,
+
+                fontWeight:
+                  700,
+              }}
+            >
+              Instrucciones
+            </div>
+
+
+            <div
+              style={{
+                marginTop:
+                  12,
+
                 padding:
-                  '34px 42px'
+                  '24px 26px',
+
+                minHeight:
+                  250,
+
+                borderRadius:
+                  17,
+
+                background:
+                  'rgba(255,255,255,.045)',
+
+                border:
+                  '1px solid rgba(255,255,255,.11)',
+
+                color:
+                  'rgba(255,255,255,.80)',
+
+                fontFamily:
+                  FONT,
+
+                fontSize:
+                  25,
+
+                lineHeight:
+                  1.55,
+              }}
+            >
+              Extrae decisiones, convierte compromisos
+              en tareas y señala cualquier dato que falte.
+
+              <br />
+              <br />
+
+              No inventes responsables ni fechas.
+              Si falta información, indícala como
+              pendiente.
+            </div>
+
+
+            <div
+              style={{
+                marginTop:
+                  28,
+
+                display:
+                  'flex',
+
+                justifyContent:
+                  'space-between',
+
+                alignItems:
+                  'center',
               }}
             >
               <div
                 style={{
-                  fontFamily: FONT,
                   color:
-                    COLORS.muted,
-                  fontSize: 22
+                    'rgba(255,255,255,.48)',
+
+                  fontFamily:
+                    FONT,
+
+                  fontSize:
+                    21,
                 }}
               >
-                NOMBRE
+                Prueba antes de usarla con información real.
               </div>
+
 
               <div
                 style={{
-                  marginTop: 12,
                   padding:
-                    '18px 20px',
-                  borderRadius: 14,
-                  background:
-                    'rgba(255,255,255,0.055)',
-                  border:
-                    step === 0
-                      ? `2px solid ${COLORS.blue}`
-                      : `1px solid ${COLORS.border}`,
-                  color: '#fff',
-                  fontFamily: FONT,
-                  fontSize: 30
-                }}
-              >
-                Asistente de reuniones
-              </div>
+                    '17px 28px',
 
-              <div
-                style={{
-                  marginTop: 34,
-                  fontFamily: FONT,
+                  borderRadius:
+                    14,
+
+                  background:
+                    step === 2
+                      ? COLORS.green
+                      : COLORS.blue,
+
                   color:
-                    COLORS.muted,
-                  fontSize: 22
+                    '#fff',
+
+                  fontFamily:
+                    FONT,
+
+                  fontSize:
+                    23,
+
+                  fontWeight:
+                    850,
+
+                  boxShadow:
+                    '0 10px 35px rgba(109,124,255,.23)',
                 }}
               >
-                INSTRUCCIONES
+                Guardar y probar
               </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </GlassPanel>
+
+    </AbsoluteFill>
+  );
+};
+
+
+// ======================================================
+// ======================================================
+// 5. CLAUDE / INSTRUCTION BUILDER
+// ======================================================
+// ======================================================
+
+const InstructionBuilder = ({
+  shot,
+}) => {
+
+  const frame =
+    useCurrentFrame();
+
+  const {
+    fps,
+  } =
+    useVideoConfig();
+
+
+  const reveal =
+    spring({
+      frame,
+      fps,
+      config: {
+        damping:
+          16,
+
+        stiffness:
+          95,
+      },
+    });
+
+
+  return (
+    <AbsoluteFill
+      style={{
+        background:
+          COLORS.bg,
+      }}
+    >
+
+      <BaseBackground />
+
+      <AmbientGlow
+        left="28%"
+        top="55%"
+        size={1100}
+        color="255,189,89"
+        opacity={0.12}
+      />
+
+      <AmbientGlow
+        left="75%"
+        top="38%"
+        size={1000}
+        color="109,124,255"
+        opacity={0.14}
+      />
+
+      <Grid
+        opacity={0.035}
+      />
+
+
+      <div
+        style={{
+          position:
+            'absolute',
+
+          left:
+            78,
+
+          top:
+            64,
+        }}
+      >
+        <SectionLabel
+          color={COLORS.amber}
+        >
+          CLAUDE COWORK
+        </SectionLabel>
+      </div>
+
+
+      <div
+        style={{
+          position:
+            'absolute',
+
+          left:
+            78,
+
+          top:
+            138,
+
+          width:
+            750,
+
+          opacity:
+            reveal,
+
+          transform:
+            `translateY(${(1 - reveal) * 35}px)`,
+        }}
+      >
+        <HeroTitle
+          size={62}
+        >
+          Conserva el objetivo.
+          Cambia el flujo.
+        </HeroTitle>
+      </div>
+
+
+      <GlassPanel
+        style={{
+          position:
+            'absolute',
+
+          left:
+            78,
+
+          right:
+            78,
+
+          top:
+            330,
+
+          bottom:
+            70,
+
+          padding:
+            '32px 34px',
+
+          opacity:
+            reveal,
+        }}
+      >
+
+        <div
+          style={{
+            display:
+              'grid',
+
+            gridTemplateColumns:
+              '1fr 1fr 1fr',
+
+            gap:
+              22,
+          }}
+        >
+
+          {[
+            {
+              label:
+                'OBJETIVO',
+
+              title:
+                'Qué resultado buscas',
+
+              body:
+                'Mantén el mismo criterio que definiste para la Gem.',
+
+              color:
+                COLORS.blue,
+            },
+
+            {
+              label:
+                'CONTEXTO',
+
+              title:
+                'Añade notas o archivos',
+
+              body:
+                'Incluye solo la información necesaria para ejecutar la tarea.',
+
+              color:
+                COLORS.amber,
+            },
+
+            {
+              label:
+                'CONTROL',
+
+              title:
+                'Revisa permisos',
+
+              body:
+                'Comprueba siempre qué estás compartiendo y qué puede usar la herramienta.',
+
+              color:
+                COLORS.green,
+            },
+          ].map(
+            (
+              item,
+              index
+            ) => (
 
               <div
+                key={
+                  item.label
+                }
                 style={{
-                  marginTop: 12,
-                  height: 280,
                   padding:
-                    '20px 22px',
-                  borderRadius: 14,
-                  background:
-                    'rgba(255,255,255,0.045)',
-                  border:
-                    step === 1
-                      ? `2px solid ${COLORS.green}`
-                      : `1px solid ${COLORS.border}`,
-                  color: '#fff',
-                  fontFamily: FONT,
-                  fontSize: 27,
-                  lineHeight: 1.45
-                }}
-              >
-                Recibe notas de una reunión.
-                Resume las decisiones.
-                Extrae responsables y próximas tareas.
-                No inventes información que no aparezca.
-              </div>
+                    '28px 28px',
 
-              <div
-                style={{
-                  marginTop: 28,
-                  display: 'flex',
-                  justifyContent:
-                    'space-between',
-                  alignItems: 'center'
+                  borderRadius:
+                    22,
+
+                  background:
+                    'rgba(255,255,255,.035)',
+
+                  border:
+                    `1px solid ${item.color}44`,
+
+                  transform:
+                    `translateY(${Math.sin((frame + index * 10) / 18) * 5}px)`,
                 }}
               >
                 <div
                   style={{
                     color:
-                      COLORS.muted,
-                    fontFamily: FONT,
-                    fontSize: 23
+                      item.color,
+
+                    fontFamily:
+                      FONT,
+
+                    fontSize:
+                      18,
+
+                    fontWeight:
+                      900,
+
+                    letterSpacing:
+                      1.7,
                   }}
                 >
-                  Prueba la Gem antes de usarla
+                  {item.label}
                 </div>
+
 
                 <div
                   style={{
-                    padding:
-                      '16px 30px',
-                    borderRadius: 14,
-                    background:
-                      step === 2
-                        ? COLORS.green
-                        : COLORS.blue,
-                    color: '#fff',
-                    fontFamily: FONT,
-                    fontSize: 26,
-                    fontWeight: 850,
-                    boxShadow:
-                      '0 10px 34px rgba(109,124,255,.24)'
+                    marginTop:
+                      18,
+
+                    color:
+                      '#fff',
+
+                    fontFamily:
+                      FONT,
+
+                    fontSize:
+                      32,
+
+                    lineHeight:
+                      1.10,
+
+                    fontWeight:
+                      850,
                   }}
                 >
-                  Guardar y probar
+                  {item.title}
                 </div>
+
+
+                <div
+                  style={{
+                    marginTop:
+                      20,
+
+                    color:
+                      COLORS.textSoft,
+
+                    fontFamily:
+                      FONT,
+
+                    fontSize:
+                      23,
+
+                    lineHeight:
+                      1.45,
+                  }}
+                >
+                  {item.body}
+                </div>
+
               </div>
-            </div>
-          </div>
-        </GlassCard>
-      </AbsoluteFill>
+            )
+          )}
+
+        </div>
+
+
+        <div
+          style={{
+            marginTop:
+              30,
+
+            padding:
+              '20px 24px',
+
+            borderRadius:
+              17,
+
+            background:
+              'rgba(255,189,89,.07)',
+
+            border:
+              '1px solid rgba(255,189,89,.25)',
+
+            color:
+              'rgba(255,255,255,.72)',
+
+            fontFamily:
+              FONT,
+
+            fontSize:
+              23,
+
+            textAlign:
+              'center',
+          }}
+        >
+          Las opciones pueden variar según acceso y versión.
+          Mantén constantes el objetivo, las reglas y el criterio de evaluación.
+        </div>
+
+      </GlassPanel>
+
     </AbsoluteFill>
   );
 };
 
 
 // ======================================================
-// 5. GEMINI VS CLAUDE
+// ======================================================
+// 6. GEMINI VS CLAUDE
+// ======================================================
 // ======================================================
 
 const DualToolComparison = ({
-  shot
+  shot,
 }) => {
 
   const frame =
     useCurrentFrame();
 
-  const {fps} =
+  const {
+    fps,
+  } =
     useVideoConfig();
+
 
   const left =
     spring({
       frame,
       fps,
       config: {
-        damping: 15,
-        stiffness: 100
-      }
+        damping:
+          15,
+
+        stiffness:
+          100,
+      },
     });
+
 
   const right =
     spring({
       frame:
-        frame - 6,
+        frame - 8,
+
       fps,
+
       config: {
-        damping: 15,
-        stiffness: 100
-      }
+        damping:
+          15,
+
+        stiffness:
+          100,
+      },
     });
 
+
   return (
-    <AbsoluteFill>
+    <AbsoluteFill
+      style={{
+        background:
+          COLORS.bg,
+      }}
+    >
+
       <BaseBackground />
 
-      <Grid
-        opacity={0.06}
+      <AmbientGlow
+        left="25%"
+        top="45%"
+        size={950}
+        color="109,124,255"
+        opacity={0.14}
       />
 
-      <AbsoluteFill
+      <AmbientGlow
+        left="75%"
+        top="45%"
+        size={950}
+        color="25,214,163"
+        opacity={0.13}
+      />
+
+      <Grid
+        opacity={0.03}
+      />
+
+
+      <div
         style={{
-          padding:
-            '70px 80px'
+          position:
+            'absolute',
+
+          left:
+            0,
+
+          right:
+            0,
+
+          top:
+            60,
+
+          textAlign:
+            'center',
         }}
       >
-        <div
+        <SectionLabel
+          color={COLORS.cyan}
+        >
+          MISMO OBJETIVO · DOS FLUJOS
+        </SectionLabel>
+      </div>
+
+
+      <div
+        style={{
+          position:
+            'absolute',
+
+          left:
+            75,
+
+          right:
+            75,
+
+          top:
+            135,
+
+          bottom:
+            70,
+
+          display:
+            'grid',
+
+          gridTemplateColumns:
+            '1fr 1fr',
+
+          gap:
+            28,
+        }}
+      >
+
+        <GlassPanel
           style={{
-            fontFamily: FONT,
-            color: '#fff',
-            fontSize: 58,
-            fontWeight: 850,
-            textAlign: 'center'
+            padding:
+              34,
+
+            transform:
+              `translateX(${(1 - left) * -70}px)`,
+
+            opacity:
+              left,
           }}
         >
-          Gemini Gems vs Claude Cowork
-        </div>
+          <Badge
+            color={COLORS.blue}
+          >
+            GEMINI GEMS
+          </Badge>
 
-        <div
+
+          <div
+            style={{
+              marginTop:
+                28,
+
+              color:
+                '#fff',
+
+              fontFamily:
+                FONT,
+
+              fontSize:
+                48,
+
+              lineHeight:
+                1.04,
+
+              fontWeight:
+                900,
+            }}
+          >
+            Asistente reutilizable
+          </div>
+
+
+          <div
+            style={{
+              marginTop:
+                42,
+            }}
+          >
+            <CheckRow
+              text="Instrucciones definidas"
+            />
+
+            <CheckRow
+              text="Conversación repetible"
+            />
+
+            <CheckRow
+              text="Mismo criterio"
+            />
+
+            <CheckRow
+              text="Configuración sencilla"
+            />
+          </div>
+
+
+          <div
+            style={{
+              marginTop:
+                52,
+
+              height:
+                180,
+
+              borderRadius:
+                20,
+
+              background:
+                'linear-gradient(135deg,rgba(109,124,255,.22),rgba(41,211,255,.06))',
+
+              display:
+                'flex',
+
+              alignItems:
+                'center',
+
+              justifyContent:
+                'center',
+
+              color:
+                '#fff',
+
+              fontFamily:
+                FONT,
+
+              fontSize:
+                30,
+
+              fontWeight:
+                900,
+            }}
+          >
+            INSTRUCCIONES → RESPUESTA
+          </div>
+        </GlassPanel>
+
+
+        <GlassPanel
           style={{
-            marginTop: 44,
-            display: 'grid',
-            gridTemplateColumns:
-              '1fr 1fr',
-            gap: 30
+            padding:
+              34,
+
+            transform:
+              `translateX(${(1 - right) * 70}px)`,
+
+            opacity:
+              right,
           }}
         >
-          <GlassCard
+          <Badge
+            color={COLORS.green}
+          >
+            CLAUDE COWORK
+          </Badge>
+
+
+          <div
             style={{
-              height: 790,
-              padding: 32,
-              transform:
-                `translateX(${(1 - left) * -80}px)`,
-              opacity: left
+              marginTop:
+                28,
+
+              color:
+                '#fff',
+
+              fontFamily:
+                FONT,
+
+              fontSize:
+                48,
+
+              lineHeight:
+                1.04,
+
+              fontWeight:
+                900,
             }}
           >
-            <Badge
-              color={COLORS.blue}
-            >
-              GEMINI GEMS
-            </Badge>
+            Flujo de trabajo
+          </div>
 
-            <div
-              style={{
-                marginTop: 34,
-                fontFamily: FONT,
-                color: '#fff',
-                fontSize: 42,
-                fontWeight: 850
-              }}
-            >
-              Instrucciones reutilizables
-            </div>
 
-            <div
-              style={{
-                marginTop: 36
-              }}
-            >
-              <CheckRow
-                text="Configura una vez"
-              />
-
-              <CheckRow
-                text="Repite el mismo criterio"
-              />
-
-              <CheckRow
-                text="Ideal para asistentes"
-              />
-
-              <CheckRow
-                text="Entrada → respuesta"
-              />
-            </div>
-
-            <div
-              style={{
-                marginTop: 55,
-                height: 190,
-                borderRadius: 18,
-                background:
-                  'linear-gradient(135deg,rgba(109,124,255,.25),rgba(41,211,255,.08))',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <div
-                style={{
-                  color: '#fff',
-                  fontFamily: FONT,
-                  fontSize: 30,
-                  fontWeight: 800
-                }}
-              >
-                GEM → RESPUESTA
-              </div>
-            </div>
-          </GlassCard>
-
-          <GlassCard
+          <div
             style={{
-              height: 790,
-              padding: 32,
-              transform:
-                `translateX(${(1 - right) * 80}px)`,
-              opacity: right
+              marginTop:
+                42,
             }}
           >
-            <Badge
-              color={COLORS.green}
-            >
-              CLAUDE COWORK
-            </Badge>
+            <CheckRow
+              text="Contexto y archivos"
+            />
 
-            <div
-              style={{
-                marginTop: 34,
-                fontFamily: FONT,
-                color: '#fff',
-                fontSize: 42,
-                fontWeight: 850
-              }}
-            >
-              Flujo con archivos
-            </div>
+            <CheckRow
+              text="Proceso más amplio"
+            />
 
-            <div
-              style={{
-                marginTop: 36
-              }}
-            >
-              <CheckRow
-                text="Trabaja con documentos"
-              />
+            <CheckRow
+              text="Permisos a revisar"
+            />
 
-              <CheckRow
-                text="Secuencia varias acciones"
-              />
+            <CheckRow
+              text="Resultado orientado a tarea"
+            />
+          </div>
 
-              <CheckRow
-                text="Ideal para procesos"
-              />
 
-              <CheckRow
-                text="Archivo → acción → entrega"
-              />
-            </div>
+          <div
+            style={{
+              marginTop:
+                52,
 
-            <div
-              style={{
-                marginTop: 55,
-                height: 190,
-                borderRadius: 18,
-                background:
-                  'linear-gradient(135deg,rgba(22,221,178,.22),rgba(255,189,89,.08))',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <div
-                style={{
-                  color: '#fff',
-                  fontFamily: FONT,
-                  fontSize: 30,
-                  fontWeight: 800
-                }}
-              >
-                ARCHIVOS → FLUJO
-              </div>
-            </div>
-          </GlassCard>
-        </div>
-      </AbsoluteFill>
+              height:
+                180,
+
+              borderRadius:
+                20,
+
+              background:
+                'linear-gradient(135deg,rgba(25,214,163,.20),rgba(255,189,89,.06))',
+
+              display:
+                'flex',
+
+              alignItems:
+                'center',
+
+              justifyContent:
+                'center',
+
+              color:
+                '#fff',
+
+              fontFamily:
+                FONT,
+
+              fontSize:
+                30,
+
+              fontWeight:
+                900,
+            }}
+          >
+            CONTEXTO → ACCIÓN → ENTREGA
+          </div>
+        </GlassPanel>
+
+      </div>
+
     </AbsoluteFill>
   );
 };
+
+
 // ======================================================
-// 6. VALIDATION / BEFORE AFTER
+// ======================================================
+// 7. BEFORE / AFTER VALIDATION
+// ======================================================
 // ======================================================
 
 const BeforeAfterValidation = ({
-  shot
+  shot,
 }) => {
 
   const frame =
     useCurrentFrame();
 
-  const {fps} =
+  const {
+    fps,
+  } =
     useVideoConfig();
+
 
   const reveal =
     spring({
       frame:
         frame - 10,
+
       fps,
+
       config: {
-        damping: 15,
-        stiffness: 105
-      }
+        damping:
+          15,
+
+        stiffness:
+          105,
+      },
     });
 
+
   return (
-    <AbsoluteFill>
+    <AbsoluteFill
+      style={{
+        background:
+          COLORS.bg,
+      }}
+    >
+
       <BaseBackground />
 
       <Grid
-        opacity={0.07}
+        opacity={0.035}
       />
 
-      <AbsoluteFill
+
+      <AmbientGlow
+        left="25%"
+        top="52%"
+        size={900}
+        color="255,102,118"
+        opacity={0.10}
+      />
+
+
+      <AmbientGlow
+        left="76%"
+        top="52%"
+        size={900}
+        color="25,214,163"
+        opacity={0.11}
+      />
+
+
+      <div
         style={{
-          padding:
-            '78px 88px'
+          position:
+            'absolute',
+
+          left:
+            80,
+
+          top:
+            68,
         }}
       >
-        <div
+        <SectionLabel
+          color={COLORS.green}
+        >
+          PRUEBA · REVISA · MEJORA
+        </SectionLabel>
+      </div>
+
+
+      <div
+        style={{
+          position:
+            'absolute',
+
+          left:
+            80,
+
+          right:
+            80,
+
+          top:
+            145,
+
+          bottom:
+            75,
+
+          display:
+            'grid',
+
+          gridTemplateColumns:
+            '1fr 1fr',
+
+          gap:
+            28,
+        }}
+      >
+
+        <GlassPanel
           style={{
-            fontFamily: FONT,
-            color: '#fff',
-            fontSize: 58,
-            fontWeight: 850
+            padding:
+              34,
           }}
         >
-          Prueba, revisa y mejora
-        </div>
+          <Badge
+            color={COLORS.red}
+          >
+            ANTES
+          </Badge>
 
-        <div
+
+          <div
+            style={{
+              marginTop:
+                28,
+
+              color:
+                '#fff',
+
+              fontFamily:
+                FONT,
+
+              fontSize:
+                43,
+
+              fontWeight:
+                880,
+            }}
+          >
+            Instrucción ambigua
+          </div>
+
+
+          <div
+            style={{
+              marginTop:
+                30,
+
+              padding:
+                '24px 25px',
+
+              borderRadius:
+                18,
+
+              background:
+                'rgba(255,102,118,.07)',
+
+              border:
+                '1px solid rgba(255,102,118,.26)',
+
+              color:
+                'rgba(255,255,255,.86)',
+
+              fontFamily:
+                FONT,
+
+              fontSize:
+                28,
+
+              lineHeight:
+                1.45,
+            }}
+          >
+            “Hazme un resumen de estas notas.”
+          </div>
+
+
+          <div
+            style={{
+              marginTop:
+                38,
+            }}
+          >
+            <CheckRow
+              text="Formato poco claro"
+              active={false}
+            />
+
+            <CheckRow
+              text="Puede inventar huecos"
+              active={false}
+            />
+
+            <CheckRow
+              text="Resultado inconsistente"
+              active={false}
+            />
+          </div>
+
+        </GlassPanel>
+
+
+        <GlassPanel
           style={{
-            marginTop: 50,
-            display: 'grid',
-            gridTemplateColumns:
-              '1fr 1fr',
-            gap: 28
+            padding:
+              34,
+
+            opacity:
+              reveal,
+
+            transform:
+              `translateX(${(1 - reveal) * 55}px)`,
           }}
         >
-          <GlassCard
+          <Badge
+            color={COLORS.green}
+          >
+            DESPUÉS
+          </Badge>
+
+
+          <div
             style={{
-              height: 730,
-              padding: 32
+              marginTop:
+                28,
+
+              color:
+                '#fff',
+
+              fontFamily:
+                FONT,
+
+              fontSize:
+                43,
+
+              fontWeight:
+                880,
             }}
           >
-            <Badge
-              color={COLORS.red}
-            >
-              PRUEBA 1
-            </Badge>
+            Instrucción concreta
+          </div>
 
-            <div
-              style={{
-                marginTop: 28,
-                color: '#fff',
-                fontFamily: FONT,
-                fontSize: 38,
-                fontWeight: 800
-              }}
-            >
-              Instrucción incompleta
-            </div>
 
-            <div
-              style={{
-                marginTop: 28,
-                padding:
-                  '22px 24px',
-                borderRadius: 18,
-                background:
-                  'rgba(255,104,116,0.08)',
-                border:
-                  '1px solid rgba(255,104,116,0.32)',
-                color: '#fff',
-                fontFamily: FONT,
-                fontSize: 28,
-                lineHeight: 1.4
-              }}
-            >
-              “Hazme un resumen de estas notas.”
-            </div>
-
-            <div
-              style={{
-                marginTop: 38
-              }}
-            >
-              <CheckRow
-                text="Formato poco claro"
-                active={false}
-              />
-
-              <CheckRow
-                text="Datos ausentes"
-                active={false}
-              />
-
-              <CheckRow
-                text="Resultado inconsistente"
-                active={false}
-              />
-            </div>
-          </GlassCard>
-
-          <GlassCard
+          <div
             style={{
-              height: 730,
-              padding: 32,
-              opacity: reveal,
-              transform:
-                `translateX(${(1 - reveal) * 55}px)`
+              marginTop:
+                30,
+
+              padding:
+                '24px 25px',
+
+              borderRadius:
+                18,
+
+              background:
+                'rgba(25,214,163,.07)',
+
+              border:
+                '1px solid rgba(25,214,163,.27)',
+
+              color:
+                'rgba(255,255,255,.86)',
+
+              fontFamily:
+                FONT,
+
+              fontSize:
+                27,
+
+              lineHeight:
+                1.45,
             }}
           >
-            <Badge
-              color={COLORS.green}
-            >
-              PRUEBA 2
-            </Badge>
+            “Extrae decisiones, responsables y tareas.
+            Si falta información, indícalo.”
+          </div>
 
-            <div
-              style={{
-                marginTop: 28,
-                color: '#fff',
-                fontFamily: FONT,
-                fontSize: 38,
-                fontWeight: 800
-              }}
-            >
-              Instrucción precisa
-            </div>
 
-            <div
-              style={{
-                marginTop: 28,
-                padding:
-                  '22px 24px',
-                borderRadius: 18,
-                background:
-                  'rgba(22,221,178,0.07)',
-                border:
-                  '1px solid rgba(22,221,178,0.32)',
-                color: '#fff',
-                fontFamily: FONT,
-                fontSize: 27,
-                lineHeight: 1.4
-              }}
-            >
-              “Resume decisiones, responsables y tareas.
-              Si falta información, indícalo.”
-            </div>
+          <div
+            style={{
+              marginTop:
+                38,
+            }}
+          >
+            <CheckRow
+              text="Formato definido"
+            />
 
-            <div
-              style={{
-                marginTop: 38
-              }}
-            >
-              <CheckRow
-                text="Formato definido"
-              />
+            <CheckRow
+              text="No inventa datos"
+            />
 
-              <CheckRow
-                text="Sin inventar datos"
-              />
+            <CheckRow
+              text="Resultado comparable"
+            />
+          </div>
 
-              <CheckRow
-                text="Resultado reutilizable"
-              />
-            </div>
-          </GlassCard>
-        </div>
-      </AbsoluteFill>
+        </GlassPanel>
+
+      </div>
+
     </AbsoluteFill>
   );
 };
 
 
 // ======================================================
-// 7. CTA
+// ======================================================
+// 8. CTA — STOCK VISIBLE
+// ======================================================
 // ======================================================
 
 const CTAEndcard = ({
-  shot
+  shot,
 }) => {
 
   const frame =
     useCurrentFrame();
 
-  const {fps} =
+  const {
+    fps,
+  } =
     useVideoConfig();
+
 
   const pop =
     spring({
       frame,
       fps,
       config: {
-        damping: 14,
-        stiffness: 100
-      }
+        damping:
+          14,
+
+        stiffness:
+          100,
+      },
     });
 
+
   return (
-    <AbsoluteFill>
-      <BaseBackground />
+    <AbsoluteFill
+      style={{
+        background:
+          COLORS.bg,
+      }}
+    >
 
-      <StockBackground
+      <CinematicVideo
         shot={shot}
-        darken={0.70}
-        blur={2}
+        darkness={0.18}
+        saturation={1.02}
+        contrast={1.06}
+        zoomStart={1.02}
+        zoomEnd={1.07}
       />
 
-      <Grid
-        opacity={0.05}
+
+      <AbsoluteFill
+        style={{
+          background:
+            'linear-gradient(90deg,rgba(3,5,9,.65),rgba(3,5,9,.25),rgba(3,5,9,.65))',
+        }}
       />
 
-      <AmbientGlow
-        left="50%"
-        top="48%"
-        size={1150}
-        color="109,124,255"
-        opacity={0.18}
-      />
 
       <AbsoluteFill
         style={{
           justifyContent:
             'center',
+
           alignItems:
             'center',
+
           padding:
-            '110px'
+            '100px',
         }}
       >
-        <GlassCard
+
+        <GlassPanel
           style={{
-            width: 1180,
+            width:
+              1160,
+
             padding:
-              '54px 70px',
-            textAlign: 'center',
+              '54px 66px',
+
+            textAlign:
+              'center',
+
             transform:
-              `scale(${0.95 + pop * 0.05})`
+              `scale(${0.95 + pop * 0.05})`,
           }}
         >
+
+          <Badge
+            color={COLORS.cyan}
+          >
+            TU TURNO
+          </Badge>
+
+
           <div
             style={{
-              fontFamily: FONT,
-              color: '#fff',
-              fontSize: 66,
-              lineHeight: 1.05,
-              fontWeight: 850
+              marginTop:
+                30,
+
+              color:
+                '#fff',
+
+              fontFamily:
+                FONT,
+
+              fontSize:
+                62,
+
+              lineHeight:
+                1.04,
+
+              fontWeight:
+                900,
+
+              letterSpacing:
+                -1.8,
             }}
           >
-            ¿Qué tarea convertirías primero en una Gem?
+            ¿Qué tarea convertirías primero
+            en un asistente?
           </div>
+
 
           <div
             style={{
               margin:
-                '44px auto 0',
-              width: 760,
+                '40px auto 0',
+
+              width:
+                760,
+
               padding:
-                '20px 28px',
-              borderRadius: 18,
+                '20px 25px',
+
+              borderRadius:
+                16,
+
               background:
-                'rgba(255,255,255,0.07)',
+                'rgba(255,255,255,.055)',
+
               border:
-                `1px solid ${COLORS.border}`,
+                '1px solid rgba(255,255,255,.12)',
+
               color:
-                COLORS.muted,
-              fontFamily: FONT,
-              fontSize: 30,
-              textAlign: 'left'
+                'rgba(255,255,255,.52)',
+
+              fontFamily:
+                FONT,
+
+              fontSize:
+                27,
+
+              textAlign:
+                'left',
             }}
           >
-            Escribe tu respuesta en comentarios...
+            Escríbela en comentarios...
+
             <span
               style={{
                 opacity:
                   frame % 20 < 10
                     ? 1
-                    : 0
+                    : 0,
               }}
             >
               |
             </span>
           </div>
-        </GlassCard>
+
+        </GlassPanel>
+
       </AbsoluteFill>
+
     </AbsoluteFill>
   );
 };
 
 
 // ======================================================
-// GENERIC FALLBACK
+// ======================================================
+// GENERIC VISUAL
+// ======================================================
 // ======================================================
 
 const GenericVisual = ({
-  shot
-}) => (
-  <AbsoluteFill>
-    <BaseBackground />
+  shot,
+}) => {
 
-    <StockBackground
-      shot={shot}
-      darken={0.58}
-    />
+  const frame =
+    useCurrentFrame();
 
-    <Grid
-      opacity={0.07}
-    />
+  const {
+    fps,
+  } =
+    useVideoConfig();
 
+
+  const reveal =
+    spring({
+      frame,
+      fps,
+      config: {
+        damping:
+          16,
+
+        stiffness:
+          100,
+      },
+    });
+
+
+  const stockUrl =
+    getStockUrl(
+      shot
+    );
+
+
+  return (
     <AbsoluteFill
       style={{
-        justifyContent:
-          'center',
-        alignItems:
-          'center',
-        padding:
-          '110px'
+        background:
+          COLORS.bg,
       }}
     >
-      <GlassCard
+
+      {stockUrl
+        ? (
+          <CinematicVideo
+            shot={shot}
+            darkness={0.16}
+            saturation={1.05}
+            contrast={1.06}
+          />
+        )
+        : (
+          <>
+            <BaseBackground />
+
+            <Grid
+              opacity={0.04}
+            />
+
+            <AmbientGlow
+              left="70%"
+              top="45%"
+              size={1000}
+              color="109,124,255"
+              opacity={0.17}
+            />
+          </>
+        )}
+
+
+      <AbsoluteFill
         style={{
-          maxWidth:
-            1250,
-          padding:
-            '48px 60px'
+          background:
+            'linear-gradient(90deg,rgba(3,5,9,.73) 0%,rgba(3,5,9,.25) 52%,rgba(3,5,9,.08) 100%)',
+        }}
+      />
+
+
+      <div
+        style={{
+          position:
+            'absolute',
+
+          left:
+            90,
+
+          top:
+            90,
         }}
       >
-        <div
-          style={{
-            fontFamily: FONT,
-            color: '#fff',
-            fontSize: 66,
-            fontWeight: 850,
-            lineHeight: 1.07,
-            textAlign:
-              'center'
-          }}
+        <SectionLabel>
+          CONTEXTO
+        </SectionLabel>
+      </div>
+
+
+      <div
+        style={{
+          position:
+            'absolute',
+
+          left:
+            90,
+
+          bottom:
+            115,
+
+          transform:
+            `translateY(${(1 - reveal) * 35}px)`,
+
+          opacity:
+            reveal,
+        }}
+      >
+        <HeroTitle
+          size={72}
+          width={950}
         >
-          {getHeadline(shot)}
-        </div>
-      </GlassCard>
+          {getHeadline(
+            shot
+          )}
+        </HeroTitle>
+      </div>
+
     </AbsoluteFill>
-  </AbsoluteFill>
-);
+  );
+};
 
 
 // ======================================================
@@ -2499,123 +3779,170 @@ const GenericVisual = ({
 // ======================================================
 
 const ShotRenderer = ({
-  shot
+  shot,
 }) => {
 
   const template =
-    getTemplate(shot);
+    getTemplate(
+      shot
+    );
 
   const layout =
-    getLayout(shot);
+    getLayout(
+      shot
+    );
 
-  switch (template) {
+
+  switch (
+    template
+  ) {
 
     case 'hook_transformation':
+
       return (
         <HookTransformation
           shot={shot}
         />
       );
 
+
     case 'intro_problem_solution':
+
       return (
         <StockPlusUI
           shot={shot}
         />
       );
 
+
     case 'notes_to_structure':
+
       return (
         <NotesToStructure
           shot={shot}
         />
       );
 
+
     case 'gemini_gem_setup':
+
       return (
         <GeminiGemSetup
           shot={shot}
         />
       );
 
+
+    case 'instruction_builder':
+
+      return (
+        <InstructionBuilder
+          shot={shot}
+        />
+      );
+
+
     case 'dual_tool_comparison':
+
       return (
         <DualToolComparison
           shot={shot}
         />
       );
 
+
     case 'before_after_validation':
+
       return (
         <BeforeAfterValidation
           shot={shot}
         />
       );
 
+
     case 'cta_endcard':
+
       return (
         <CTAEndcard
           shot={shot}
         />
       );
+
 
     default:
       break;
   }
 
 
-  switch (layout) {
+  switch (
+    layout
+  ) {
 
     case 'dynamic_problem_solution':
+
       return (
         <HookTransformation
           shot={shot}
         />
       );
 
+
     case 'stock_background_with_ui_overlay':
+
       return (
         <StockPlusUI
           shot={shot}
         />
       );
 
+
     case 'split_context_and_output':
+
       return (
         <NotesToStructure
           shot={shot}
         />
       );
 
+
     case 'full_ui_with_detail_zoom':
+
       return (
         <GeminiGemSetup
           shot={shot}
         />
       );
 
+
     case 'split_screen_50_50':
+
       return (
         <DualToolComparison
           shot={shot}
         />
       );
 
+
     case 'test_review_improve':
+
       return (
         <BeforeAfterValidation
           shot={shot}
         />
       );
 
+
     case 'centered_cta_with_background':
+
       return (
         <CTAEndcard
           shot={shot}
         />
       );
 
+
     default:
+
       return (
         <GenericVisual
           shot={shot}
@@ -2633,32 +3960,40 @@ const normalizeShots = ({
   timelineShots = [],
   scenes = [],
   scene = null,
-  visual = null
+  visual = null,
 }) => {
 
   if (
-    Array.isArray(timelineShots) &&
+    Array.isArray(
+      timelineShots
+    ) &&
     timelineShots.length > 0
   ) {
 
     return timelineShots.map(
-      (shot) => {
+      (
+        shot
+      ) => {
 
         const matchingScene =
-          safeArray(scenes).find(
-            (item) =>
+          safeArray(
+            scenes
+          ).find(
+            item =>
               item?.sceneId ===
               shot?.sceneId
           );
+
 
         return {
           ...(matchingScene || {}),
           ...(scene || {}),
           ...shot,
+
           visual:
             visual ||
             shot?.visual ||
-            null
+            null,
         };
       }
     );
@@ -2670,19 +4005,26 @@ const normalizeShots = ({
     return [
       {
         ...scene,
+
         visual:
-          visual || null,
-        startFrame: 0,
+          visual ||
+          null,
+
+        startFrame:
+          0,
+
         durationFrames:
           scene?.durationFrames ||
-          300
-      }
+          300,
+      },
     ];
   }
 
 
   if (
-    Array.isArray(scenes) &&
+    Array.isArray(
+      scenes
+    ) &&
     scenes.length > 0
   ) {
 
@@ -2692,15 +4034,18 @@ const normalizeShots = ({
         index
       ) => ({
         ...item,
+
         startFrame:
           item?.startFrame ||
           0,
+
         durationFrames:
           item?.durationFrames ||
           300,
+
         shotId:
           item?.shotId ||
-          `${item?.sceneId || index}_SHOT`
+          `${item?.sceneId || index}_SHOT`,
       })
     );
   }
@@ -2718,7 +4063,7 @@ const YouTubeV4 = ({
   timelineShots = [],
   scenes = [],
   scene = null,
-  visual = null
+  visual = null,
 }) => {
 
   const shots =
@@ -2726,12 +4071,17 @@ const YouTubeV4 = ({
       timelineShots,
       scenes,
       scene,
-      visual
+      visual,
     });
 
+
   return (
-    <AbsoluteFill>
-      <BaseBackground />
+    <AbsoluteFill
+      style={{
+        background:
+          COLORS.bg,
+      }}
+    >
 
       {shots.map(
         (
@@ -2745,12 +4095,14 @@ const YouTubeV4 = ({
               shot?.sceneId ||
               index
             }
+
             from={
               Number(
                 shot?.startFrame ||
                 0
               )
             }
+
             durationInFrames={
               Math.max(
                 1,
@@ -2767,6 +4119,7 @@ const YouTubeV4 = ({
           </Sequence>
         )
       )}
+
     </AbsoluteFill>
   );
 };
@@ -2791,12 +4144,17 @@ export const RemotionRoot = () => (
     }
 
     fps={
-      DEFAULT_PROPS.fps
+      DEFAULT_PROPS
+        .fps
     }
 
-    width={1920}
+    width={
+      1920
+    }
 
-    height={1080}
+    height={
+      1080
+    }
 
     defaultProps={
       DEFAULT_PROPS
@@ -2804,7 +4162,7 @@ export const RemotionRoot = () => (
 
     calculateMetadata={
       async ({
-        props
+        props,
       }) => ({
 
         durationInFrames:
@@ -2834,7 +4192,7 @@ export const RemotionRoot = () => (
           1920,
 
         height:
-          1080
+          1080,
       })
     }
   />
