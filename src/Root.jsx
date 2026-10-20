@@ -13,21 +13,20 @@ import {
 
 
 // ======================================================
-// YOUTUBE V4.4 — CINEMATIC REAL-ASSET EDITION
+// YOUTUBE V4.5 — CINEMATIC REAL-ASSET EDITION
 // ======================================================
 //
-// OBJETIVO:
-// - El vídeo REAL es protagonista.
-// - La UI explica, no tapa.
-// - Menos tarjetas.
-// - Más profundidad.
-// - Mejor jerarquía visual.
+// OBJETIVOS:
+// - Vídeo real protagonista.
+// - UI como apoyo, no como capa dominante.
+// - Fases del hook SIN solapamiento.
+// - Menos texto simultáneo.
 // - Movimiento continuo.
-// - Diseño distinto por escena.
-// - Look editorial / tecnológico / cinematográfico.
-// - Compatible con el manifest V4.2.10 actual.
+// - Jerarquía editorial.
+// - Escenas específicas para Gemini / Claude.
+// - Compatible con manifest V4.2.10.
 //
-// COMPOSITION ID:
+// COMPOSITION:
 // YouTubeV4
 // ======================================================
 
@@ -55,8 +54,12 @@ const COLORS = {
   bgSoft: '#0a0f19',
 
   white: '#ffffff',
-  textSoft: 'rgba(255,255,255,0.72)',
-  textMuted: 'rgba(255,255,255,0.48)',
+
+  textSoft:
+    'rgba(255,255,255,0.72)',
+
+  textMuted:
+    'rgba(255,255,255,0.48)',
 
   blue: '#6d7cff',
   cyan: '#29d3ff',
@@ -64,9 +67,14 @@ const COLORS = {
   amber: '#ffbd59',
   red: '#ff6676',
 
-  glass: 'rgba(10,15,25,0.74)',
-  glassStrong: 'rgba(8,12,20,0.88)',
-  border: 'rgba(255,255,255,0.14)',
+  glass:
+    'rgba(10,15,25,0.74)',
+
+  glassStrong:
+    'rgba(8,12,20,0.88)',
+
+  border:
+    'rgba(255,255,255,0.14)',
 };
 
 
@@ -138,12 +146,15 @@ const getStockUrl = (shot) => {
   const stock =
     getStock(shot);
 
+
   if (
     stock?.available === true &&
     stock?.url
   ) {
+
     return stock.url;
   }
+
 
   const videoLayer =
     safeArray(
@@ -153,6 +164,7 @@ const getStockUrl = (shot) => {
         layer?.type === 'video' &&
         layer?.sourceURL
     );
+
 
   return (
     videoLayer?.sourceURL ||
@@ -196,8 +208,11 @@ const fadeInOut = (
       0,
     ],
     {
-      extrapolateLeft: 'clamp',
-      extrapolateRight: 'clamp',
+      extrapolateLeft:
+        'clamp',
+
+      extrapolateRight:
+        'clamp',
     }
   );
 
@@ -207,12 +222,14 @@ const fadeInOut = (
 // ======================================================
 
 const BaseBackground = () => (
+
   <AbsoluteFill
     style={{
       background:
         'linear-gradient(135deg,#05070c 0%,#09111c 52%,#05070c 100%)',
     }}
   />
+
 );
 
 
@@ -223,17 +240,22 @@ const BaseBackground = () => (
 const Grid = ({
   opacity = 0.04,
 }) => (
+
   <AbsoluteFill
     style={{
       opacity,
+
       backgroundImage:
         'linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px)',
+
       backgroundSize:
         '72px 72px',
+
       pointerEvents:
         'none',
     }}
   />
+
 );
 
 
@@ -248,23 +270,36 @@ const AmbientGlow = ({
   color = '109,124,255',
   opacity = 0.18,
 }) => (
+
   <div
     style={{
-      position: 'absolute',
+      position:
+        'absolute',
+
       left,
+
       top,
-      width: size,
-      height: size,
+
+      width:
+        size,
+
+      height:
+        size,
+
       transform:
         'translate(-50%,-50%)',
+
       borderRadius:
         '50%',
+
       background:
         `radial-gradient(circle,rgba(${color},${opacity}) 0%,rgba(${color},0) 68%)`,
+
       pointerEvents:
         'none',
     }}
   />
+
 );
 
 
@@ -275,47 +310,56 @@ const AmbientGlow = ({
 const Vignette = ({
   opacity = 0.45,
 }) => (
+
   <AbsoluteFill
     style={{
       background:
         `radial-gradient(circle at 50% 45%,transparent 38%,rgba(0,0,0,${opacity}) 100%)`,
+
       pointerEvents:
         'none',
     }}
   />
+
 );
 
 
 // ======================================================
-// CINEMATIC STOCK VIDEO
+// CINEMATIC VIDEO
 // ======================================================
 
 const CinematicVideo = ({
   shot,
-  darkness = 0.18,
+  darkness = 0.14,
   saturation = 1.05,
   contrast = 1.05,
+  brightness = 1,
   zoomStart = 1.02,
-  zoomEnd = 1.09,
+  zoomEnd = 1.08,
   position = 'center center',
 }) => {
 
   const frame =
     useCurrentFrame();
 
+
   const duration =
     getDurationFrames(
       shot
     );
+
 
   const src =
     getStockUrl(
       shot
     );
 
+
   if (!src) {
+
     return null;
   }
+
 
   const progress =
     clamp(
@@ -324,6 +368,7 @@ const CinematicVideo = ({
       0,
       1
     );
+
 
   const scale =
     interpolate(
@@ -335,40 +380,59 @@ const CinematicVideo = ({
       ]
     );
 
+
   const panX =
     interpolate(
       progress,
       [0, 1],
-      [-10, 12]
+      [-8, 10]
     );
+
+
+  const panY =
+    Math.sin(
+      progress *
+      Math.PI
+    ) * -5;
+
 
   return (
     <>
+
       <AbsoluteFill
         style={{
           overflow:
             'hidden',
         }}
       >
+
         <Video
           src={src}
           muted
+
           style={{
             width:
               '100%',
+
             height:
               '100%',
+
             objectFit:
               'cover',
+
             objectPosition:
               position,
+
             transform:
-              `translateX(${panX}px) scale(${scale})`,
+              `translate(${panX}px,${panY}px) scale(${scale})`,
+
             filter:
-              `saturate(${saturation}) contrast(${contrast})`,
+              `saturate(${saturation}) contrast(${contrast}) brightness(${brightness})`,
           }}
         />
+
       </AbsoluteFill>
+
 
       <AbsoluteFill
         style={{
@@ -377,9 +441,11 @@ const CinematicVideo = ({
         }}
       />
 
+
       <Vignette
-        opacity={0.34}
+        opacity={0.27}
       />
+
     </>
   );
 };
@@ -393,19 +459,20 @@ const GlassPanel = ({
   children,
   style = {},
 }) => (
+
   <div
     style={{
       background:
-        'linear-gradient(145deg,rgba(14,20,32,.82),rgba(6,10,18,.70))',
+        'linear-gradient(145deg,rgba(14,20,32,.78),rgba(6,10,18,.65))',
 
       border:
         `1px solid ${COLORS.border}`,
 
       boxShadow:
-        '0 28px 90px rgba(0,0,0,.32)',
+        '0 28px 90px rgba(0,0,0,.30)',
 
       backdropFilter:
-        'blur(18px)',
+        'blur(16px)',
 
       borderRadius:
         26,
@@ -413,8 +480,11 @@ const GlassPanel = ({
       ...style,
     }}
   >
+
     {children}
+
   </div>
+
 );
 
 
@@ -426,6 +496,7 @@ const Badge = ({
   children,
   color = COLORS.blue,
 }) => (
+
   <div
     style={{
       display:
@@ -462,19 +533,23 @@ const Badge = ({
         0.6,
     }}
   >
+
     {children}
+
   </div>
+
 );
 
 
 // ======================================================
-// SMALL CHECK ROW
+// CHECK ROW
 // ======================================================
 
 const CheckRow = ({
   text,
   active = true,
 }) => (
+
   <div
     style={{
       display:
@@ -490,6 +565,7 @@ const CheckRow = ({
         18,
     }}
   >
+
     <div
       style={{
         width:
@@ -532,10 +608,13 @@ const CheckRow = ({
           900,
       }}
     >
+
       {active
         ? '✓'
         : '×'}
+
     </div>
+
 
     <div
       style={{
@@ -552,9 +631,13 @@ const CheckRow = ({
           650,
       }}
     >
+
       {text}
+
     </div>
+
   </div>
+
 );
 
 
@@ -566,6 +649,7 @@ const SectionLabel = ({
   children,
   color = COLORS.cyan,
 }) => (
+
   <div
     style={{
       display:
@@ -581,7 +665,7 @@ const SectionLabel = ({
         FONT,
 
       color:
-        'rgba(255,255,255,.72)',
+        'rgba(255,255,255,.74)',
 
       fontWeight:
         850,
@@ -596,6 +680,7 @@ const SectionLabel = ({
         'uppercase',
     }}
   >
+
     <div
       style={{
         width:
@@ -615,8 +700,11 @@ const SectionLabel = ({
       }}
     />
 
+
     {children}
+
   </div>
+
 );
 
 
@@ -630,6 +718,7 @@ const HeroTitle = ({
   width = 900,
   align = 'left',
 }) => (
+
   <div
     style={{
       maxWidth:
@@ -660,14 +749,26 @@ const HeroTitle = ({
         '0 15px 48px rgba(0,0,0,.55)',
     }}
   >
+
     {children}
+
   </div>
+
 );
 
 
 // ======================================================
 // ======================================================
-// 1. HOOK — CINEMATIC REAL VIDEO
+// 1. HOOK
+//
+// V4.5:
+// FASE 1 = 0.00 -> 0.29
+// TRANSICIÓN = 0.29 -> 0.35
+// FASE 2 = 0.35 -> 0.65
+// TRANSICIÓN = 0.65 -> 0.72
+// FASE 3 = 0.72 -> 1.00
+//
+// Los titulares nunca permanecen visibles juntos.
 // ======================================================
 // ======================================================
 
@@ -678,15 +779,18 @@ const HookTransformation = ({
   const frame =
     useCurrentFrame();
 
+
   const {
     fps,
   } =
     useVideoConfig();
 
+
   const duration =
     getDurationFrames(
       shot
     );
+
 
   const progress =
     clamp(
@@ -696,70 +800,156 @@ const HookTransformation = ({
       1
     );
 
+
   const stockUrl =
     getStockUrl(
       shot
     );
+
 
   const texts =
     getTextElements(
       shot
     );
 
+
   const firstText =
     texts[0] ||
-    'Tus notas son ruido';
+    'El caos no es un sistema';
+
 
   const secondText =
     texts[1] ||
     'Convierte el proceso en un asistente';
 
 
-  const titleSpring =
+  const entrance =
     spring({
       frame,
+
       fps,
+
       config: {
-        damping: 15,
-        stiffness: 110,
-        mass: 0.85,
+        damping:
+          15,
+
+        stiffness:
+          115,
+
+        mass:
+          0.85,
       },
     });
 
 
-  const chaosOpacity =
+  // ----------------------------------------------------
+  // FASE 1
+  // ----------------------------------------------------
+
+  const phase1 =
     fadeInOut(
       progress,
-      0,
-      0.03,
-      0.25,
-      0.39
+      0.00,
+      0.025,
+      0.255,
+      0.31
     );
 
 
-  const transformationOpacity =
+  // ----------------------------------------------------
+  // FASE 2
+  // ----------------------------------------------------
+
+  const phase2 =
     fadeInOut(
       progress,
-      0.28,
+      0.33,
       0.38,
-      0.64,
-      0.73
+      0.61,
+      0.67
     );
 
 
-  const payoff =
+  // ----------------------------------------------------
+  // FASE 3
+  // ----------------------------------------------------
+
+  const phase3 =
     interpolate(
       progress,
+
       [
-        0.60,
-        0.74,
+        0.70,
+        0.76,
         1,
       ],
+
       [
         0,
         1,
         1,
       ],
+
+      {
+        extrapolateLeft:
+          'clamp',
+
+        extrapolateRight:
+          'clamp',
+      }
+    );
+
+
+  // ----------------------------------------------------
+  // TRANSITION FLASH 1
+  // ----------------------------------------------------
+
+  const flash1 =
+    interpolate(
+      progress,
+
+      [
+        0.29,
+        0.32,
+        0.35,
+      ],
+
+      [
+        0,
+        0.48,
+        0,
+      ],
+
+      {
+        extrapolateLeft:
+          'clamp',
+
+        extrapolateRight:
+          'clamp',
+      }
+    );
+
+
+  // ----------------------------------------------------
+  // TRANSITION FLASH 2
+  // ----------------------------------------------------
+
+  const flash2 =
+    interpolate(
+      progress,
+
+      [
+        0.64,
+        0.675,
+        0.71,
+      ],
+
+      [
+        0,
+        0.34,
+        0,
+      ],
+
       {
         extrapolateLeft:
           'clamp',
@@ -783,45 +973,60 @@ const HookTransformation = ({
 
       {stockUrl
         ? (
+
           <CinematicVideo
             shot={shot}
-            darkness={0.10}
-            saturation={1.08}
-            contrast={1.07}
-            zoomStart={1.01}
-            zoomEnd={1.10}
+
+            darkness={0.055}
+
+            saturation={1.10}
+
+            contrast={1.06}
+
+            brightness={1.03}
+
+            zoomStart={1.015}
+
+            zoomEnd={1.075}
+
+            position="center center"
           />
+
         )
         : (
+
           <>
             <BaseBackground />
 
             <AmbientGlow
-              left="68%"
-              top="42%"
+              left="67%"
+              top="43%"
               size={1200}
               color="41,211,255"
-              opacity={0.19}
+              opacity={0.18}
             />
 
             <Grid
-              opacity={0.04}
+              opacity={0.035}
             />
           </>
+
         )}
 
 
-      {/* LEFT READABILITY GRADIENT */}
+      {/* ------------------------------------------------
+          SUBTLE LEFT READABILITY
+      ------------------------------------------------ */}
 
       <AbsoluteFill
         style={{
           background:
-            'linear-gradient(90deg,rgba(3,5,9,.74) 0%,rgba(3,5,9,.30) 40%,rgba(3,5,9,.04) 72%,rgba(3,5,9,.10) 100%)',
+            'linear-gradient(90deg,rgba(3,5,9,.68) 0%,rgba(3,5,9,.25) 39%,rgba(3,5,9,.035) 72%,rgba(3,5,9,.035) 100%)',
         }}
       />
 
 
-      {/* CINEMATIC TOP/BOTTOM */}
+      {/* CINEMATIC BARS */}
 
       <div
         style={{
@@ -838,12 +1043,13 @@ const HookTransformation = ({
             0,
 
           height:
-            18,
+            15,
 
           background:
             '#000',
         }}
       />
+
 
       <div
         style={{
@@ -860,7 +1066,7 @@ const HookTransformation = ({
             0,
 
           height:
-            18,
+            15,
 
           background:
             '#000',
@@ -868,12 +1074,14 @@ const HookTransformation = ({
       />
 
 
-      {/* PHASE 1 */}
+      {/* =================================================
+          PHASE 1 — PROBLEM
+      ================================================= */}
 
       <AbsoluteFill
         style={{
           opacity:
-            chaosOpacity,
+            phase1,
         }}
       >
 
@@ -883,10 +1091,10 @@ const HookTransformation = ({
               'absolute',
 
             left:
-              92,
+              86,
 
             top:
-              86,
+              74,
           }}
         >
           <SectionLabel
@@ -903,21 +1111,22 @@ const HookTransformation = ({
               'absolute',
 
             left:
-              92,
+              86,
 
             bottom:
-              118,
+              105,
 
             transform:
-              `translateY(${(1 - titleSpring) * 44}px)`,
+              `translateY(${(1 - entrance) * 42}px)`,
 
             opacity:
-              titleSpring,
+              entrance,
           }}
         >
+
           <HeroTitle
-            size={84}
-            width={850}
+            size={82}
+            width={820}
           >
             {firstText}
           </HeroTitle>
@@ -926,10 +1135,10 @@ const HookTransformation = ({
           <div
             style={{
               marginTop:
-                22,
+                20,
 
               maxWidth:
-                680,
+                665,
 
               fontFamily:
                 FONT,
@@ -938,22 +1147,21 @@ const HookTransformation = ({
                 'rgba(255,255,255,.72)',
 
               fontSize:
-                30,
+                29,
 
               lineHeight:
                 1.35,
 
               fontWeight:
-                600,
+                620,
             }}
           >
-            Notas dispersas, tareas sin dueño y
-            contexto que se pierde.
+            Información dispersa, tareas sin dueño
+            y contexto que se pierde.
           </div>
+
         </div>
 
-
-        {/* ONLY TWO CARDS — NOT FIVE */}
 
         <GlassPanel
           style={{
@@ -961,24 +1169,25 @@ const HookTransformation = ({
               'absolute',
 
             right:
-              100,
+              92,
 
             top:
               130,
 
             width:
-              320,
+              306,
 
             padding:
-              '22px 26px',
+              '20px 24px',
 
             transform:
-              `rotate(-3deg) translateY(${Math.sin(frame / 9) * 8}px)`,
+              `rotate(-2deg) translateY(${Math.sin(frame / 9) * 6}px)`,
 
             border:
-              '1px solid rgba(255,102,118,.40)',
+              '1px solid rgba(255,102,118,.38)',
           }}
         >
+
           <div
             style={{
               fontFamily:
@@ -988,7 +1197,7 @@ const HookTransformation = ({
                 COLORS.red,
 
               fontSize:
-                17,
+                16,
 
               fontWeight:
                 900,
@@ -1000,10 +1209,11 @@ const HookTransformation = ({
             PENDIENTE
           </div>
 
+
           <div
             style={{
               marginTop:
-                12,
+                10,
 
               fontFamily:
                 FONT,
@@ -1012,14 +1222,15 @@ const HookTransformation = ({
                 '#fff',
 
               fontSize:
-                29,
+                27,
 
               fontWeight:
-                800,
+                820,
             }}
           >
             ¿Quién hace qué?
           </div>
+
         </GlassPanel>
 
 
@@ -1029,24 +1240,25 @@ const HookTransformation = ({
               'absolute',
 
             right:
-              145,
+              130,
 
             bottom:
-              150,
+              135,
 
             width:
-              340,
+              326,
 
             padding:
-              '22px 26px',
+              '20px 24px',
 
             transform:
-              `rotate(3deg) translateY(${Math.sin((frame + 15) / 10) * 8}px)`,
+              `rotate(2deg) translateY(${Math.sin((frame + 17) / 10) * 6}px)`,
 
             border:
-              '1px solid rgba(255,189,89,.38)',
+              '1px solid rgba(255,189,89,.36)',
           }}
         >
+
           <div
             style={{
               fontFamily:
@@ -1056,7 +1268,7 @@ const HookTransformation = ({
                 COLORS.amber,
 
               fontSize:
-                17,
+                16,
 
               fontWeight:
                 900,
@@ -1068,10 +1280,11 @@ const HookTransformation = ({
             SIN ESTRUCTURA
           </div>
 
+
           <div
             style={{
               marginTop:
-                12,
+                10,
 
               fontFamily:
                 FONT,
@@ -1080,34 +1293,55 @@ const HookTransformation = ({
                 '#fff',
 
               fontSize:
-                29,
+                27,
 
               fontWeight:
-                800,
+                820,
             }}
           >
             Repetir otra vez
           </div>
+
         </GlassPanel>
 
       </AbsoluteFill>
 
 
-      {/* PHASE 2 — TRANSFORMATION */}
+      {/* =================================================
+          TRANSITION 1
+      ================================================= */}
 
       <AbsoluteFill
         style={{
           opacity:
-            transformationOpacity,
+            flash1,
+
+          background:
+            'linear-gradient(110deg,rgba(255,255,255,.70),rgba(41,211,255,.38),transparent)',
+
+          mixBlendMode:
+            'screen',
+        }}
+      />
+
+
+      {/* =================================================
+          PHASE 2 — TRANSFORMATION
+      ================================================= */}
+
+      <AbsoluteFill
+        style={{
+          opacity:
+            phase2,
         }}
       >
 
         <AmbientGlow
-          left="55%"
-          top="50%"
+          left="54%"
+          top="55%"
           size={1100}
           color="41,211,255"
-          opacity={0.17}
+          opacity={0.14}
         />
 
 
@@ -1117,13 +1351,15 @@ const HookTransformation = ({
               'absolute',
 
             left:
-              92,
+              86,
 
             top:
-              86,
+              74,
           }}
         >
-          <SectionLabel>
+          <SectionLabel
+            color={COLORS.cyan}
+          >
             TRANSFORMA
           </SectionLabel>
         </div>
@@ -1135,20 +1371,24 @@ const HookTransformation = ({
               'absolute',
 
             left:
-              92,
+              86,
 
             top:
-              215,
+              175,
 
-            width:
-              700,
+            maxWidth:
+              860,
           }}
         >
+
           <HeroTitle
-            size={75}
+            size={69}
+            width={860}
           >
-            De información suelta a un sistema claro.
+            De información suelta
+            a un sistema claro.
           </HeroTitle>
+
         </div>
 
 
@@ -1158,25 +1398,25 @@ const HookTransformation = ({
               'absolute',
 
             left:
-              95,
+              90,
 
             right:
-              95,
+              90,
 
             bottom:
-              110,
+              100,
 
             display:
               'grid',
 
             gridTemplateColumns:
-              '1fr 100px 1fr 100px 1fr',
+              '1fr 74px 1fr 74px 1fr',
 
             alignItems:
               'center',
 
             gap:
-              14,
+              10,
           }}
         >
 
@@ -1228,15 +1468,16 @@ const HookTransformation = ({
                 <GlassPanel
                   style={{
                     padding:
-                      '26px 28px',
+                      '23px 25px',
 
                     minHeight:
-                      135,
+                      124,
 
                     transform:
-                      `translateY(${Math.sin((frame + index * 9) / 14) * 4}px)`,
+                      `translateY(${Math.sin((frame + index * 9) / 14) * 3}px)`,
                   }}
                 >
+
                   <div
                     style={{
                       color:
@@ -1246,7 +1487,7 @@ const HookTransformation = ({
                         FONT,
 
                       fontSize:
-                        18,
+                        16,
 
                       fontWeight:
                         900,
@@ -1258,10 +1499,11 @@ const HookTransformation = ({
                     {item.label}
                   </div>
 
+
                   <div
                     style={{
                       marginTop:
-                        14,
+                        12,
 
                       color:
                         '#fff',
@@ -1270,7 +1512,7 @@ const HookTransformation = ({
                         FONT,
 
                       fontSize:
-                        31,
+                        27,
 
                       fontWeight:
                         800,
@@ -1278,11 +1520,13 @@ const HookTransformation = ({
                   >
                     {item.value}
                   </div>
+
                 </GlassPanel>
 
 
                 {index < 2
                   ? (
+
                     <div
                       style={{
                         textAlign:
@@ -1295,21 +1539,23 @@ const HookTransformation = ({
                           COLORS.cyan,
 
                         fontSize:
-                          46,
+                          40,
 
                         fontWeight:
                           900,
 
                         opacity:
-                          0.78,
+                          0.76,
                       }}
                     >
                       →
                     </div>
+
                   )
                   : null}
 
               </React.Fragment>
+
             )
           )}
 
@@ -1318,19 +1564,39 @@ const HookTransformation = ({
       </AbsoluteFill>
 
 
-      {/* PHASE 3 — PAYOFF */}
+      {/* =================================================
+          TRANSITION 2
+      ================================================= */}
 
       <AbsoluteFill
         style={{
           opacity:
-            payoff,
+            flash2,
+
+          background:
+            'linear-gradient(110deg,transparent,rgba(25,214,163,.42),rgba(255,255,255,.40))',
+
+          mixBlendMode:
+            'screen',
+        }}
+      />
+
+
+      {/* =================================================
+          PHASE 3 — PAYOFF
+      ================================================= */}
+
+      <AbsoluteFill
+        style={{
+          opacity:
+            phase3,
         }}
       >
 
         <AbsoluteFill
           style={{
             background:
-              'linear-gradient(90deg,rgba(3,5,9,.76) 0%,rgba(3,5,9,.32) 47%,rgba(3,5,9,.06) 100%)',
+              'linear-gradient(90deg,rgba(3,5,9,.67) 0%,rgba(3,5,9,.24) 46%,rgba(3,5,9,.025) 75%,rgba(3,5,9,.02) 100%)',
           }}
         />
 
@@ -1341,10 +1607,10 @@ const HookTransformation = ({
               'absolute',
 
             left:
-              92,
+              86,
 
             top:
-              88,
+              76,
           }}
         >
           <SectionLabel
@@ -1361,15 +1627,19 @@ const HookTransformation = ({
               'absolute',
 
             left:
-              92,
+              86,
 
             top:
               205,
+
+            maxWidth:
+              880,
           }}
         >
+
           <HeroTitle
-            size={82}
-            width={900}
+            size={78}
+            width={880}
           >
             {secondText}
           </HeroTitle>
@@ -1384,14 +1654,16 @@ const HookTransformation = ({
                 'flex',
 
               gap:
-                14,
+                13,
             }}
           >
+
             <Badge
               color={COLORS.green}
             >
               CLARO
             </Badge>
+
 
             <Badge
               color={COLORS.cyan}
@@ -1399,12 +1671,15 @@ const HookTransformation = ({
               REUTILIZABLE
             </Badge>
 
+
             <Badge
               color={COLORS.blue}
             >
               MEDIBLE
             </Badge>
+
           </div>
+
         </div>
 
       </AbsoluteFill>
@@ -1416,7 +1691,7 @@ const HookTransformation = ({
 
 // ======================================================
 // ======================================================
-// 2. INTRO — STOCK + UI, VIDEO DOMINANT
+// 2. INTRO
 // ======================================================
 // ======================================================
 
@@ -1427,6 +1702,7 @@ const StockPlusUI = ({
   const frame =
     useCurrentFrame();
 
+
   const {
     fps,
   } =
@@ -1436,10 +1712,15 @@ const StockPlusUI = ({
   const reveal =
     spring({
       frame,
+
       fps,
+
       config: {
-        damping: 16,
-        stiffness: 95,
+        damping:
+          16,
+
+        stiffness:
+          95,
       },
     });
 
@@ -1454,18 +1735,25 @@ const StockPlusUI = ({
 
       <CinematicVideo
         shot={shot}
-        darkness={0.12}
-        saturation={1.06}
+
+        darkness={0.09}
+
+        saturation={1.07}
+
         contrast={1.05}
-        zoomStart={1.015}
-        zoomEnd={1.07}
+
+        brightness={1.02}
+
+        zoomStart={1.01}
+
+        zoomEnd={1.06}
       />
 
 
       <AbsoluteFill
         style={{
           background:
-            'linear-gradient(90deg,rgba(3,5,9,.16) 0%,rgba(3,5,9,.12) 52%,rgba(3,5,9,.82) 100%)',
+            'linear-gradient(90deg,rgba(3,5,9,.13) 0%,rgba(3,5,9,.08) 50%,rgba(3,5,9,.77) 100%)',
         }}
       />
 
@@ -1476,10 +1764,10 @@ const StockPlusUI = ({
             'absolute',
 
           left:
-            85,
+            80,
 
           top:
-            80,
+            70,
         }}
       >
         <SectionLabel>
@@ -1494,13 +1782,13 @@ const StockPlusUI = ({
             'absolute',
 
           left:
-            85,
+            80,
 
           bottom:
-            95,
+            90,
 
           width:
-            780,
+            760,
 
           transform:
             `translateY(${(1 - reveal) * 30}px)`,
@@ -1509,11 +1797,14 @@ const StockPlusUI = ({
             reveal,
         }}
       >
+
         <HeroTitle
-          size={70}
+          size={67}
         >
-          Define el trabajo antes de elegir la herramienta.
+          Define el trabajo antes
+          de elegir la herramienta.
         </HeroTitle>
+
       </div>
 
 
@@ -1523,16 +1814,16 @@ const StockPlusUI = ({
             'absolute',
 
           right:
-            72,
+            68,
 
           top:
             130,
 
           width:
-            500,
+            480,
 
           padding:
-            '30px 34px',
+            '28px 32px',
 
           transform:
             `translateX(${(1 - reveal) * 70}px)`,
@@ -1541,23 +1832,28 @@ const StockPlusUI = ({
             reveal,
         }}
       >
+
         <Badge
           color={COLORS.blue}
         >
           3 CLAVES
         </Badge>
 
+
         <CheckRow
           text="Objetivo claro"
         />
+
 
         <CheckRow
           text="Contexto suficiente"
         />
 
+
         <CheckRow
           text="Formato de salida"
         />
+
       </GlassPanel>
 
     </AbsoluteFill>
@@ -1567,7 +1863,7 @@ const StockPlusUI = ({
 
 // ======================================================
 // ======================================================
-// 3. NOTES → STRUCTURE
+// 3. NOTES TO STRUCTURE
 // ======================================================
 // ======================================================
 
@@ -1578,6 +1874,7 @@ const NotesToStructure = ({
   const frame =
     useCurrentFrame();
 
+
   const {
     fps,
   } =
@@ -1587,7 +1884,9 @@ const NotesToStructure = ({
   const leftReveal =
     spring({
       frame,
+
       fps,
+
       config: {
         damping:
           15,
@@ -1625,18 +1924,25 @@ const NotesToStructure = ({
 
       <CinematicVideo
         shot={shot}
-        darkness={0.22}
-        saturation={0.96}
-        contrast={1.08}
-        zoomStart={1.02}
-        zoomEnd={1.065}
+
+        darkness={0.16}
+
+        saturation={0.99}
+
+        contrast={1.07}
+
+        brightness={1.01}
+
+        zoomStart={1.015}
+
+        zoomEnd={1.055}
       />
 
 
       <AbsoluteFill
         style={{
           background:
-            'linear-gradient(180deg,rgba(2,4,8,.15),rgba(2,4,8,.50))',
+            'linear-gradient(180deg,rgba(2,4,8,.10),rgba(2,4,8,.43))',
         }}
       />
 
@@ -1647,10 +1953,10 @@ const NotesToStructure = ({
             'absolute',
 
           left:
-            78,
+            72,
 
           top:
-            68,
+            60,
         }}
       >
         <SectionLabel
@@ -1667,48 +1973,47 @@ const NotesToStructure = ({
             'absolute',
 
           left:
-            78,
+            72,
 
           right:
-            78,
+            72,
 
           top:
-            150,
+            140,
 
           bottom:
-            80,
+            70,
 
           display:
             'grid',
 
           gridTemplateColumns:
-            '0.95fr 100px 1.2fr',
+            '0.92fr 82px 1.15fr',
 
           alignItems:
             'center',
 
           gap:
-            20,
+            18,
         }}
       >
-
-        {/* RAW */}
 
         <GlassPanel
           style={{
             padding:
-              32,
+              30,
 
             minHeight:
-              650,
+              635,
 
             opacity:
               leftReveal,
 
             transform:
-              `translateX(${(1 - leftReveal) * -60}px)`,
+              `translateX(${(1 - leftReveal) * -55}px)`,
           }}
         >
+
           <Badge
             color={COLORS.red}
           >
@@ -1719,7 +2024,7 @@ const NotesToStructure = ({
           <div
             style={{
               marginTop:
-                30,
+                28,
 
               fontFamily:
                 FONT,
@@ -1728,7 +2033,7 @@ const NotesToStructure = ({
                 '#fff',
 
               fontSize:
-                32,
+                31,
 
               fontWeight:
                 820,
@@ -1749,27 +2054,29 @@ const NotesToStructure = ({
               text,
               index
             ) => (
+
               <div
                 key={
                   text
                 }
+
                 style={{
                   marginTop:
-                    20,
+                    18,
 
                   padding:
-                    '18px 20px',
+                    '16px 18px',
 
                   borderRadius:
-                    16,
+                    15,
 
                   background:
                     index % 2 === 0
-                      ? 'rgba(255,102,118,.09)'
-                      : 'rgba(255,255,255,.055)',
+                      ? 'rgba(255,102,118,.08)'
+                      : 'rgba(255,255,255,.045)',
 
                   border:
-                    '1px solid rgba(255,255,255,.08)',
+                    '1px solid rgba(255,255,255,.075)',
 
                   color:
                     'rgba(255,255,255,.78)',
@@ -1778,18 +2085,17 @@ const NotesToStructure = ({
                     FONT,
 
                   fontSize:
-                    27,
+                    25,
                 }}
               >
                 • {text}
               </div>
+
             )
           )}
 
         </GlassPanel>
 
-
-        {/* ARROW */}
 
         <div
           style={{
@@ -1800,7 +2106,7 @@ const NotesToStructure = ({
               COLORS.cyan,
 
             fontSize:
-              64,
+              58,
 
             fontWeight:
               900,
@@ -1816,23 +2122,22 @@ const NotesToStructure = ({
         </div>
 
 
-        {/* STRUCTURED */}
-
         <GlassPanel
           style={{
             padding:
-              32,
+              30,
 
             minHeight:
-              650,
+              635,
 
             opacity:
               rightReveal,
 
             transform:
-              `translateX(${(1 - rightReveal) * 70}px)`,
+              `translateX(${(1 - rightReveal) * 60}px)`,
           }}
         >
+
           <Badge
             color={COLORS.green}
           >
@@ -1843,7 +2148,7 @@ const NotesToStructure = ({
           <div
             style={{
               marginTop:
-                30,
+                28,
 
               display:
                 'grid',
@@ -1852,7 +2157,7 @@ const NotesToStructure = ({
                 '1fr 1fr',
 
               gap:
-                16,
+                14,
             }}
           >
 
@@ -1881,28 +2186,28 @@ const NotesToStructure = ({
                 COLORS.green,
               ],
             ].map(
-              (
-                item
-              ) => (
+              item => (
 
                 <div
                   key={
                     item[0]
                   }
+
                   style={{
                     padding:
-                      '20px 22px',
+                      '18px 20px',
 
                     borderRadius:
-                      17,
+                      16,
 
                     background:
-                      `${item[2]}16`,
+                      `${item[2]}15`,
 
                     border:
-                      `1px solid ${item[2]}55`,
+                      `1px solid ${item[2]}50`,
                   }}
                 >
+
                   <div
                     style={{
                       color:
@@ -1912,7 +2217,7 @@ const NotesToStructure = ({
                         FONT,
 
                       fontSize:
-                        17,
+                        16,
 
                       fontWeight:
                         900,
@@ -1924,10 +2229,11 @@ const NotesToStructure = ({
                     {item[0]}
                   </div>
 
+
                   <div
                     style={{
                       marginTop:
-                        8,
+                        7,
 
                       color:
                         '#fff',
@@ -1936,7 +2242,7 @@ const NotesToStructure = ({
                         FONT,
 
                       fontSize:
-                        27,
+                        25,
 
                       fontWeight:
                         780,
@@ -1944,7 +2250,9 @@ const NotesToStructure = ({
                   >
                     {item[1]}
                   </div>
+
                 </div>
+
               )
             )}
 
@@ -1954,21 +2262,22 @@ const NotesToStructure = ({
           <div
             style={{
               marginTop:
-                30,
+                27,
 
               padding:
-                '22px 24px',
+                '18px 22px',
 
               borderRadius:
                 18,
 
               background:
-                'rgba(25,214,163,.08)',
+                'rgba(25,214,163,.065)',
 
               border:
-                '1px solid rgba(25,214,163,.28)',
+                '1px solid rgba(25,214,163,.25)',
             }}
           >
+
             <CheckRow
               text="Decisiones"
             />
@@ -1984,6 +2293,7 @@ const NotesToStructure = ({
             <CheckRow
               text="Fecha límite"
             />
+
           </div>
 
         </GlassPanel>
@@ -1997,7 +2307,7 @@ const NotesToStructure = ({
 
 // ======================================================
 // ======================================================
-// 4. GEMINI GEM SETUP
+// 4. GEMINI SETUP
 // ======================================================
 // ======================================================
 
@@ -2008,8 +2318,10 @@ const GeminiGemSetup = ({
   const frame =
     useCurrentFrame();
 
+
   const {
     fps,
+    durationInFrames,
   } =
     useVideoConfig();
 
@@ -2017,7 +2329,9 @@ const GeminiGemSetup = ({
   const windowReveal =
     spring({
       frame,
+
       fps,
+
       config: {
         damping:
           16,
@@ -2028,13 +2342,28 @@ const GeminiGemSetup = ({
     });
 
 
-  const step =
-    Math.min(
-      2,
-      Math.floor(
-        frame / 250
-      )
+  const sceneDuration =
+    Math.max(
+      1,
+      durationInFrames
     );
+
+
+  const progress =
+    clamp(
+      frame /
+      sceneDuration,
+      0,
+      1
+    );
+
+
+  const step =
+    progress < 0.34
+      ? 0
+      : progress < 0.68
+      ? 1
+      : 2;
 
 
   return (
@@ -2047,6 +2376,7 @@ const GeminiGemSetup = ({
 
       <BaseBackground />
 
+
       <AmbientGlow
         left="70%"
         top="40%"
@@ -2055,8 +2385,9 @@ const GeminiGemSetup = ({
         opacity={0.20}
       />
 
+
       <Grid
-        opacity={0.035}
+        opacity={0.03}
       />
 
 
@@ -2066,10 +2397,10 @@ const GeminiGemSetup = ({
             'absolute',
 
           left:
-            78,
+            72,
 
           top:
-            62,
+            58,
         }}
       >
         <SectionLabel
@@ -2086,16 +2417,16 @@ const GeminiGemSetup = ({
             'absolute',
 
           left:
-            78,
+            72,
 
           right:
-            78,
+            72,
 
           top:
-            130,
+            122,
 
           bottom:
-            70,
+            62,
 
           overflow:
             'hidden',
@@ -2108,12 +2439,10 @@ const GeminiGemSetup = ({
         }}
       >
 
-        {/* BROWSER BAR */}
-
         <div
           style={{
             height:
-              74,
+              70,
 
             display:
               'flex',
@@ -2122,40 +2451,44 @@ const GeminiGemSetup = ({
               'center',
 
             padding:
-              '0 26px',
+              '0 24px',
 
             borderBottom:
-              '1px solid rgba(255,255,255,.10)',
+              '1px solid rgba(255,255,255,.09)',
 
             background:
-              'rgba(255,255,255,.035)',
+              'rgba(255,255,255,.03)',
           }}
         >
+
           <div
             style={{
               display:
                 'flex',
 
               gap:
-                10,
+                9,
             }}
           >
+
             {[
               '#ff6676',
               '#ffbd59',
               '#19d6a3',
             ].map(
               color => (
+
                 <div
                   key={
                     color
                   }
+
                   style={{
                     width:
-                      13,
+                      12,
 
                     height:
-                      13,
+                      12,
 
                     borderRadius:
                       999,
@@ -2164,15 +2497,17 @@ const GeminiGemSetup = ({
                       color,
                   }}
                 />
+
               )
             )}
+
           </div>
 
 
           <div
             style={{
               marginLeft:
-                26,
+                24,
 
               color:
                 'rgba(255,255,255,.45)',
@@ -2181,11 +2516,12 @@ const GeminiGemSetup = ({
                 FONT,
 
               fontSize:
-                19,
+                18,
             }}
           >
             Gemini · Crear Gem
           </div>
+
         </div>
 
 
@@ -2195,27 +2531,26 @@ const GeminiGemSetup = ({
               'grid',
 
             gridTemplateColumns:
-              '330px 1fr',
+              '310px 1fr',
 
             height:
-              'calc(100% - 74px)',
+              'calc(100% - 70px)',
           }}
         >
-
-          {/* SIDEBAR */}
 
           <div
             style={{
               padding:
-                28,
+                26,
 
               borderRight:
-                '1px solid rgba(255,255,255,.08)',
+                '1px solid rgba(255,255,255,.075)',
 
               background:
-                'rgba(0,0,0,.18)',
+                'rgba(0,0,0,.15)',
             }}
           >
+
             <Badge
               color={COLORS.blue}
             >
@@ -2237,36 +2572,37 @@ const GeminiGemSetup = ({
                   key={
                     label
                   }
+
                   style={{
                     marginTop:
-                      24,
+                      22,
 
                     padding:
-                      '18px 18px',
+                      '16px 17px',
 
                     borderRadius:
                       14,
 
                     background:
                       index === step
-                        ? 'rgba(109,124,255,.16)'
-                        : 'rgba(255,255,255,.035)',
+                        ? 'rgba(109,124,255,.15)'
+                        : 'rgba(255,255,255,.03)',
 
                     border:
                       index === step
-                        ? '1px solid rgba(109,124,255,.45)'
-                        : '1px solid rgba(255,255,255,.07)',
+                        ? '1px solid rgba(109,124,255,.42)'
+                        : '1px solid rgba(255,255,255,.06)',
 
                     color:
                       index === step
                         ? '#fff'
-                        : 'rgba(255,255,255,.55)',
+                        : 'rgba(255,255,255,.50)',
 
                     fontFamily:
                       FONT,
 
                     fontSize:
-                      25,
+                      23,
 
                     fontWeight:
                       760,
@@ -2274,17 +2610,17 @@ const GeminiGemSetup = ({
                 >
                   {index + 1}. {label}
                 </div>
+
               )
             )}
+
           </div>
 
-
-          {/* CONTENT */}
 
           <div
             style={{
               padding:
-                '34px 42px',
+                '31px 38px',
             }}
           >
 
@@ -2297,7 +2633,7 @@ const GeminiGemSetup = ({
                   FONT,
 
                 fontSize:
-                  42,
+                  40,
 
                 fontWeight:
                   850,
@@ -2310,7 +2646,7 @@ const GeminiGemSetup = ({
             <div
               style={{
                 marginTop:
-                  28,
+                  24,
 
                 color:
                   COLORS.textSoft,
@@ -2319,7 +2655,7 @@ const GeminiGemSetup = ({
                   FONT,
 
                 fontSize:
-                  22,
+                  20,
 
                 fontWeight:
                   700,
@@ -2332,22 +2668,22 @@ const GeminiGemSetup = ({
             <div
               style={{
                 marginTop:
-                  12,
+                  11,
 
                 padding:
-                  '24px 26px',
+                  '22px 24px',
 
                 minHeight:
-                  250,
+                  235,
 
                 borderRadius:
                   17,
 
                 background:
-                  'rgba(255,255,255,.045)',
+                  'rgba(255,255,255,.04)',
 
                 border:
-                  '1px solid rgba(255,255,255,.11)',
+                  '1px solid rgba(255,255,255,.10)',
 
                 color:
                   'rgba(255,255,255,.80)',
@@ -2356,12 +2692,13 @@ const GeminiGemSetup = ({
                   FONT,
 
                 fontSize:
-                  25,
+                  24,
 
                 lineHeight:
-                  1.55,
+                  1.50,
               }}
             >
+
               Extrae decisiones, convierte compromisos
               en tareas y señala cualquier dato que falte.
 
@@ -2369,15 +2706,15 @@ const GeminiGemSetup = ({
               <br />
 
               No inventes responsables ni fechas.
-              Si falta información, indícala como
-              pendiente.
+              Si falta información, indícala como pendiente.
+
             </div>
 
 
             <div
               style={{
                 marginTop:
-                  28,
+                  24,
 
                 display:
                   'flex',
@@ -2389,16 +2726,17 @@ const GeminiGemSetup = ({
                   'center',
               }}
             >
+
               <div
                 style={{
                   color:
-                    'rgba(255,255,255,.48)',
+                    'rgba(255,255,255,.46)',
 
                   fontFamily:
                     FONT,
 
                   fontSize:
-                    21,
+                    20,
                 }}
               >
                 Prueba antes de usarla con información real.
@@ -2408,7 +2746,7 @@ const GeminiGemSetup = ({
               <div
                 style={{
                   padding:
-                    '17px 28px',
+                    '16px 26px',
 
                   borderRadius:
                     14,
@@ -2425,17 +2763,18 @@ const GeminiGemSetup = ({
                     FONT,
 
                   fontSize:
-                    23,
+                    22,
 
                   fontWeight:
                     850,
 
                   boxShadow:
-                    '0 10px 35px rgba(109,124,255,.23)',
+                    '0 10px 35px rgba(109,124,255,.22)',
                 }}
               >
                 Guardar y probar
               </div>
+
             </div>
 
           </div>
@@ -2462,6 +2801,7 @@ const InstructionBuilder = ({
   const frame =
     useCurrentFrame();
 
+
   const {
     fps,
   } =
@@ -2471,7 +2811,9 @@ const InstructionBuilder = ({
   const reveal =
     spring({
       frame,
+
       fps,
+
       config: {
         damping:
           16,
@@ -2492,24 +2834,27 @@ const InstructionBuilder = ({
 
       <BaseBackground />
 
+
       <AmbientGlow
         left="28%"
         top="55%"
         size={1100}
         color="255,189,89"
-        opacity={0.12}
+        opacity={0.11}
       />
+
 
       <AmbientGlow
         left="75%"
         top="38%"
         size={1000}
         color="109,124,255"
-        opacity={0.14}
+        opacity={0.13}
       />
 
+
       <Grid
-        opacity={0.035}
+        opacity={0.03}
       />
 
 
@@ -2519,10 +2864,10 @@ const InstructionBuilder = ({
             'absolute',
 
           left:
-            78,
+            72,
 
           top:
-            64,
+            58,
         }}
       >
         <SectionLabel
@@ -2539,27 +2884,29 @@ const InstructionBuilder = ({
             'absolute',
 
           left:
-            78,
+            72,
 
           top:
-            138,
+            130,
 
           width:
-            750,
+            730,
 
           opacity:
             reveal,
 
           transform:
-            `translateY(${(1 - reveal) * 35}px)`,
+            `translateY(${(1 - reveal) * 32}px)`,
         }}
       >
+
         <HeroTitle
-          size={62}
+          size={60}
         >
           Conserva el objetivo.
           Cambia el flujo.
         </HeroTitle>
+
       </div>
 
 
@@ -2569,19 +2916,19 @@ const InstructionBuilder = ({
             'absolute',
 
           left:
-            78,
+            72,
 
           right:
-            78,
+            72,
 
           top:
-            330,
+            320,
 
           bottom:
-            70,
+            62,
 
           padding:
-            '32px 34px',
+            '29px 31px',
 
           opacity:
             reveal,
@@ -2597,7 +2944,7 @@ const InstructionBuilder = ({
               '1fr 1fr 1fr',
 
             gap:
-              22,
+              20,
           }}
         >
 
@@ -2610,7 +2957,7 @@ const InstructionBuilder = ({
                 'Qué resultado buscas',
 
               body:
-                'Mantén el mismo criterio que definiste para la Gem.',
+                'Mantén el mismo criterio definido para el asistente.',
 
               color:
                 COLORS.blue,
@@ -2624,7 +2971,7 @@ const InstructionBuilder = ({
                 'Añade notas o archivos',
 
               body:
-                'Incluye solo la información necesaria para ejecutar la tarea.',
+                'Incluye únicamente la información necesaria para ejecutar la tarea.',
 
               color:
                 COLORS.amber,
@@ -2638,7 +2985,7 @@ const InstructionBuilder = ({
                 'Revisa permisos',
 
               body:
-                'Comprueba siempre qué estás compartiendo y qué puede usar la herramienta.',
+                'Comprueba qué compartes y qué puede utilizar la herramienta.',
 
               color:
                 COLORS.green,
@@ -2653,23 +3000,25 @@ const InstructionBuilder = ({
                 key={
                   item.label
                 }
+
                 style={{
                   padding:
-                    '28px 28px',
+                    '25px 25px',
 
                   borderRadius:
-                    22,
+                    21,
 
                   background:
-                    'rgba(255,255,255,.035)',
+                    'rgba(255,255,255,.03)',
 
                   border:
-                    `1px solid ${item.color}44`,
+                    `1px solid ${item.color}40`,
 
                   transform:
-                    `translateY(${Math.sin((frame + index * 10) / 18) * 5}px)`,
+                    `translateY(${Math.sin((frame + index * 10) / 18) * 4}px)`,
                 }}
               >
+
                 <div
                   style={{
                     color:
@@ -2679,7 +3028,7 @@ const InstructionBuilder = ({
                       FONT,
 
                     fontSize:
-                      18,
+                      17,
 
                     fontWeight:
                       900,
@@ -2695,7 +3044,7 @@ const InstructionBuilder = ({
                 <div
                   style={{
                     marginTop:
-                      18,
+                      16,
 
                     color:
                       '#fff',
@@ -2704,7 +3053,7 @@ const InstructionBuilder = ({
                       FONT,
 
                     fontSize:
-                      32,
+                      30,
 
                     lineHeight:
                       1.10,
@@ -2720,7 +3069,7 @@ const InstructionBuilder = ({
                 <div
                   style={{
                     marginTop:
-                      20,
+                      18,
 
                     color:
                       COLORS.textSoft,
@@ -2729,16 +3078,17 @@ const InstructionBuilder = ({
                       FONT,
 
                     fontSize:
-                      23,
+                      22,
 
                     lineHeight:
-                      1.45,
+                      1.43,
                   }}
                 >
                   {item.body}
                 </div>
 
               </div>
+
             )
           )}
 
@@ -2748,35 +3098,36 @@ const InstructionBuilder = ({
         <div
           style={{
             marginTop:
-              30,
+              27,
 
             padding:
-              '20px 24px',
+              '18px 22px',
 
             borderRadius:
               17,
 
             background:
-              'rgba(255,189,89,.07)',
+              'rgba(255,189,89,.06)',
 
             border:
-              '1px solid rgba(255,189,89,.25)',
+              '1px solid rgba(255,189,89,.23)',
 
             color:
-              'rgba(255,255,255,.72)',
+              'rgba(255,255,255,.70)',
 
             fontFamily:
               FONT,
 
             fontSize:
-              23,
+              21,
 
             textAlign:
               'center',
           }}
         >
           Las opciones pueden variar según acceso y versión.
-          Mantén constantes el objetivo, las reglas y el criterio de evaluación.
+          Mantén constantes el objetivo, las reglas
+          y el criterio de evaluación.
         </div>
 
       </GlassPanel>
@@ -2788,7 +3139,7 @@ const InstructionBuilder = ({
 
 // ======================================================
 // ======================================================
-// 6. GEMINI VS CLAUDE
+// 6. DUAL TOOL COMPARISON
 // ======================================================
 // ======================================================
 
@@ -2799,6 +3150,7 @@ const DualToolComparison = ({
   const frame =
     useCurrentFrame();
 
+
   const {
     fps,
   } =
@@ -2808,7 +3160,9 @@ const DualToolComparison = ({
   const left =
     spring({
       frame,
+
       fps,
+
       config: {
         damping:
           15,
@@ -2846,24 +3200,27 @@ const DualToolComparison = ({
 
       <BaseBackground />
 
+
       <AmbientGlow
         left="25%"
         top="45%"
         size={950}
         color="109,124,255"
-        opacity={0.14}
+        opacity={0.13}
       />
+
 
       <AmbientGlow
         left="75%"
         top="45%"
         size={950}
         color="25,214,163"
-        opacity={0.13}
+        opacity={0.12}
       />
 
+
       <Grid
-        opacity={0.03}
+        opacity={0.025}
       />
 
 
@@ -2879,17 +3236,22 @@ const DualToolComparison = ({
             0,
 
           top:
-            60,
+            52,
 
-          textAlign:
+          display:
+            'flex',
+
+          justifyContent:
             'center',
         }}
       >
+
         <SectionLabel
           color={COLORS.cyan}
         >
           MISMO OBJETIVO · DOS FLUJOS
         </SectionLabel>
+
       </div>
 
 
@@ -2899,16 +3261,16 @@ const DualToolComparison = ({
             'absolute',
 
           left:
-            75,
+            70,
 
           right:
-            75,
+            70,
 
           top:
-            135,
+            125,
 
           bottom:
-            70,
+            62,
 
           display:
             'grid',
@@ -2917,22 +3279,23 @@ const DualToolComparison = ({
             '1fr 1fr',
 
           gap:
-            28,
+            26,
         }}
       >
 
         <GlassPanel
           style={{
             padding:
-              34,
+              31,
 
             transform:
-              `translateX(${(1 - left) * -70}px)`,
+              `translateX(${(1 - left) * -65}px)`,
 
             opacity:
               left,
           }}
         >
+
           <Badge
             color={COLORS.blue}
           >
@@ -2943,7 +3306,7 @@ const DualToolComparison = ({
           <div
             style={{
               marginTop:
-                28,
+                25,
 
               color:
                 '#fff',
@@ -2952,7 +3315,7 @@ const DualToolComparison = ({
                 FONT,
 
               fontSize:
-                48,
+                44,
 
               lineHeight:
                 1.04,
@@ -2968,9 +3331,10 @@ const DualToolComparison = ({
           <div
             style={{
               marginTop:
-                42,
+                35,
             }}
           >
+
             <CheckRow
               text="Instrucciones definidas"
             />
@@ -2986,22 +3350,23 @@ const DualToolComparison = ({
             <CheckRow
               text="Configuración sencilla"
             />
+
           </div>
 
 
           <div
             style={{
               marginTop:
-                52,
+                45,
 
               height:
-                180,
+                165,
 
               borderRadius:
-                20,
+                19,
 
               background:
-                'linear-gradient(135deg,rgba(109,124,255,.22),rgba(41,211,255,.06))',
+                'linear-gradient(135deg,rgba(109,124,255,.20),rgba(41,211,255,.055))',
 
               display:
                 'flex',
@@ -3019,7 +3384,7 @@ const DualToolComparison = ({
                 FONT,
 
               fontSize:
-                30,
+                27,
 
               fontWeight:
                 900,
@@ -3027,21 +3392,23 @@ const DualToolComparison = ({
           >
             INSTRUCCIONES → RESPUESTA
           </div>
+
         </GlassPanel>
 
 
         <GlassPanel
           style={{
             padding:
-              34,
+              31,
 
             transform:
-              `translateX(${(1 - right) * 70}px)`,
+              `translateX(${(1 - right) * 65}px)`,
 
             opacity:
               right,
           }}
         >
+
           <Badge
             color={COLORS.green}
           >
@@ -3052,7 +3419,7 @@ const DualToolComparison = ({
           <div
             style={{
               marginTop:
-                28,
+                25,
 
               color:
                 '#fff',
@@ -3061,7 +3428,7 @@ const DualToolComparison = ({
                 FONT,
 
               fontSize:
-                48,
+                44,
 
               lineHeight:
                 1.04,
@@ -3077,9 +3444,10 @@ const DualToolComparison = ({
           <div
             style={{
               marginTop:
-                42,
+                35,
             }}
           >
+
             <CheckRow
               text="Contexto y archivos"
             />
@@ -3095,22 +3463,23 @@ const DualToolComparison = ({
             <CheckRow
               text="Resultado orientado a tarea"
             />
+
           </div>
 
 
           <div
             style={{
               marginTop:
-                52,
+                45,
 
               height:
-                180,
+                165,
 
               borderRadius:
-                20,
+                19,
 
               background:
-                'linear-gradient(135deg,rgba(25,214,163,.20),rgba(255,189,89,.06))',
+                'linear-gradient(135deg,rgba(25,214,163,.18),rgba(255,189,89,.055))',
 
               display:
                 'flex',
@@ -3128,7 +3497,7 @@ const DualToolComparison = ({
                 FONT,
 
               fontSize:
-                30,
+                27,
 
               fontWeight:
                 900,
@@ -3136,6 +3505,7 @@ const DualToolComparison = ({
           >
             CONTEXTO → ACCIÓN → ENTREGA
           </div>
+
         </GlassPanel>
 
       </div>
@@ -3147,7 +3517,7 @@ const DualToolComparison = ({
 
 // ======================================================
 // ======================================================
-// 7. BEFORE / AFTER VALIDATION
+// 7. VALIDATION
 // ======================================================
 // ======================================================
 
@@ -3157,6 +3527,7 @@ const BeforeAfterValidation = ({
 
   const frame =
     useCurrentFrame();
+
 
   const {
     fps,
@@ -3191,8 +3562,9 @@ const BeforeAfterValidation = ({
 
       <BaseBackground />
 
+
       <Grid
-        opacity={0.035}
+        opacity={0.03}
       />
 
 
@@ -3201,7 +3573,7 @@ const BeforeAfterValidation = ({
         top="52%"
         size={900}
         color="255,102,118"
-        opacity={0.10}
+        opacity={0.09}
       />
 
 
@@ -3210,7 +3582,7 @@ const BeforeAfterValidation = ({
         top="52%"
         size={900}
         color="25,214,163"
-        opacity={0.11}
+        opacity={0.10}
       />
 
 
@@ -3220,17 +3592,19 @@ const BeforeAfterValidation = ({
             'absolute',
 
           left:
-            80,
+            74,
 
           top:
-            68,
+            60,
         }}
       >
+
         <SectionLabel
           color={COLORS.green}
         >
           PRUEBA · REVISA · MEJORA
         </SectionLabel>
+
       </div>
 
 
@@ -3240,16 +3614,16 @@ const BeforeAfterValidation = ({
             'absolute',
 
           left:
-            80,
+            74,
 
           right:
-            80,
+            74,
 
           top:
-            145,
+            135,
 
           bottom:
-            75,
+            66,
 
           display:
             'grid',
@@ -3258,16 +3632,17 @@ const BeforeAfterValidation = ({
             '1fr 1fr',
 
           gap:
-            28,
+            26,
         }}
       >
 
         <GlassPanel
           style={{
             padding:
-              34,
+              31,
           }}
         >
+
           <Badge
             color={COLORS.red}
           >
@@ -3278,7 +3653,7 @@ const BeforeAfterValidation = ({
           <div
             style={{
               marginTop:
-                28,
+                25,
 
               color:
                 '#fff',
@@ -3287,7 +3662,7 @@ const BeforeAfterValidation = ({
                 FONT,
 
               fontSize:
-                43,
+                40,
 
               fontWeight:
                 880,
@@ -3300,19 +3675,19 @@ const BeforeAfterValidation = ({
           <div
             style={{
               marginTop:
-                30,
+                27,
 
               padding:
-                '24px 25px',
+                '22px 23px',
 
               borderRadius:
                 18,
 
               background:
-                'rgba(255,102,118,.07)',
+                'rgba(255,102,118,.065)',
 
               border:
-                '1px solid rgba(255,102,118,.26)',
+                '1px solid rgba(255,102,118,.24)',
 
               color:
                 'rgba(255,255,255,.86)',
@@ -3321,10 +3696,10 @@ const BeforeAfterValidation = ({
                 FONT,
 
               fontSize:
-                28,
+                26,
 
               lineHeight:
-                1.45,
+                1.43,
             }}
           >
             “Hazme un resumen de estas notas.”
@@ -3334,9 +3709,10 @@ const BeforeAfterValidation = ({
           <div
             style={{
               marginTop:
-                38,
+                32,
             }}
           >
+
             <CheckRow
               text="Formato poco claro"
               active={false}
@@ -3351,6 +3727,7 @@ const BeforeAfterValidation = ({
               text="Resultado inconsistente"
               active={false}
             />
+
           </div>
 
         </GlassPanel>
@@ -3359,15 +3736,16 @@ const BeforeAfterValidation = ({
         <GlassPanel
           style={{
             padding:
-              34,
+              31,
 
             opacity:
               reveal,
 
             transform:
-              `translateX(${(1 - reveal) * 55}px)`,
+              `translateX(${(1 - reveal) * 50}px)`,
           }}
         >
+
           <Badge
             color={COLORS.green}
           >
@@ -3378,7 +3756,7 @@ const BeforeAfterValidation = ({
           <div
             style={{
               marginTop:
-                28,
+                25,
 
               color:
                 '#fff',
@@ -3387,7 +3765,7 @@ const BeforeAfterValidation = ({
                 FONT,
 
               fontSize:
-                43,
+                40,
 
               fontWeight:
                 880,
@@ -3400,19 +3778,19 @@ const BeforeAfterValidation = ({
           <div
             style={{
               marginTop:
-                30,
+                27,
 
               padding:
-                '24px 25px',
+                '22px 23px',
 
               borderRadius:
                 18,
 
               background:
-                'rgba(25,214,163,.07)',
+                'rgba(25,214,163,.065)',
 
               border:
-                '1px solid rgba(25,214,163,.27)',
+                '1px solid rgba(25,214,163,.25)',
 
               color:
                 'rgba(255,255,255,.86)',
@@ -3421,10 +3799,10 @@ const BeforeAfterValidation = ({
                 FONT,
 
               fontSize:
-                27,
+                25,
 
               lineHeight:
-                1.45,
+                1.43,
             }}
           >
             “Extrae decisiones, responsables y tareas.
@@ -3435,9 +3813,10 @@ const BeforeAfterValidation = ({
           <div
             style={{
               marginTop:
-                38,
+                32,
             }}
           >
+
             <CheckRow
               text="Formato definido"
             />
@@ -3449,6 +3828,7 @@ const BeforeAfterValidation = ({
             <CheckRow
               text="Resultado comparable"
             />
+
           </div>
 
         </GlassPanel>
@@ -3462,7 +3842,7 @@ const BeforeAfterValidation = ({
 
 // ======================================================
 // ======================================================
-// 8. CTA — STOCK VISIBLE
+// 8. CTA
 // ======================================================
 // ======================================================
 
@@ -3473,6 +3853,7 @@ const CTAEndcard = ({
   const frame =
     useCurrentFrame();
 
+
   const {
     fps,
   } =
@@ -3482,7 +3863,9 @@ const CTAEndcard = ({
   const pop =
     spring({
       frame,
+
       fps,
+
       config: {
         damping:
           14,
@@ -3503,18 +3886,25 @@ const CTAEndcard = ({
 
       <CinematicVideo
         shot={shot}
-        darkness={0.18}
-        saturation={1.02}
+
+        darkness={0.13}
+
+        saturation={1.04}
+
         contrast={1.06}
-        zoomStart={1.02}
-        zoomEnd={1.07}
+
+        brightness={1.02}
+
+        zoomStart={1.015}
+
+        zoomEnd={1.055}
       />
 
 
       <AbsoluteFill
         style={{
           background:
-            'linear-gradient(90deg,rgba(3,5,9,.65),rgba(3,5,9,.25),rgba(3,5,9,.65))',
+            'linear-gradient(90deg,rgba(3,5,9,.57),rgba(3,5,9,.19),rgba(3,5,9,.57))',
         }}
       />
 
@@ -3528,17 +3918,17 @@ const CTAEndcard = ({
             'center',
 
           padding:
-            '100px',
+            '95px',
         }}
       >
 
         <GlassPanel
           style={{
             width:
-              1160,
+              1120,
 
             padding:
-              '54px 66px',
+              '50px 62px',
 
             textAlign:
               'center',
@@ -3558,7 +3948,7 @@ const CTAEndcard = ({
           <div
             style={{
               marginTop:
-                30,
+                27,
 
               color:
                 '#fff',
@@ -3567,7 +3957,7 @@ const CTAEndcard = ({
                 FONT,
 
               fontSize:
-                62,
+                58,
 
               lineHeight:
                 1.04,
@@ -3587,36 +3977,37 @@ const CTAEndcard = ({
           <div
             style={{
               margin:
-                '40px auto 0',
+                '36px auto 0',
 
               width:
-                760,
+                730,
 
               padding:
-                '20px 25px',
+                '18px 23px',
 
               borderRadius:
                 16,
 
               background:
-                'rgba(255,255,255,.055)',
+                'rgba(255,255,255,.05)',
 
               border:
-                '1px solid rgba(255,255,255,.12)',
+                '1px solid rgba(255,255,255,.11)',
 
               color:
-                'rgba(255,255,255,.52)',
+                'rgba(255,255,255,.50)',
 
               fontFamily:
                 FONT,
 
               fontSize:
-                27,
+                25,
 
               textAlign:
                 'left',
             }}
           >
+
             Escríbela en comentarios...
 
             <span
@@ -3629,6 +4020,7 @@ const CTAEndcard = ({
             >
               |
             </span>
+
           </div>
 
         </GlassPanel>
@@ -3641,9 +4033,7 @@ const CTAEndcard = ({
 
 
 // ======================================================
-// ======================================================
 // GENERIC VISUAL
-// ======================================================
 // ======================================================
 
 const GenericVisual = ({
@@ -3652,6 +4042,7 @@ const GenericVisual = ({
 
   const frame =
     useCurrentFrame();
+
 
   const {
     fps,
@@ -3662,7 +4053,9 @@ const GenericVisual = ({
   const reveal =
     spring({
       frame,
+
       fps,
+
       config: {
         damping:
           16,
@@ -3689,19 +4082,27 @@ const GenericVisual = ({
 
       {stockUrl
         ? (
+
           <CinematicVideo
             shot={shot}
-            darkness={0.16}
-            saturation={1.05}
+
+            darkness={0.11}
+
+            saturation={1.06}
+
             contrast={1.06}
+
+            brightness={1.02}
           />
+
         )
         : (
+
           <>
             <BaseBackground />
 
             <Grid
-              opacity={0.04}
+              opacity={0.035}
             />
 
             <AmbientGlow
@@ -3709,16 +4110,17 @@ const GenericVisual = ({
               top="45%"
               size={1000}
               color="109,124,255"
-              opacity={0.17}
+              opacity={0.15}
             />
           </>
+
         )}
 
 
       <AbsoluteFill
         style={{
           background:
-            'linear-gradient(90deg,rgba(3,5,9,.73) 0%,rgba(3,5,9,.25) 52%,rgba(3,5,9,.08) 100%)',
+            'linear-gradient(90deg,rgba(3,5,9,.65) 0%,rgba(3,5,9,.21) 51%,rgba(3,5,9,.04) 100%)',
         }}
       />
 
@@ -3729,15 +4131,17 @@ const GenericVisual = ({
             'absolute',
 
           left:
-            90,
+            84,
 
           top:
-            90,
+            78,
         }}
       >
+
         <SectionLabel>
           CONTEXTO
         </SectionLabel>
+
       </div>
 
 
@@ -3747,26 +4151,28 @@ const GenericVisual = ({
             'absolute',
 
           left:
-            90,
+            84,
 
           bottom:
-            115,
+            105,
 
           transform:
-            `translateY(${(1 - reveal) * 35}px)`,
+            `translateY(${(1 - reveal) * 32}px)`,
 
           opacity:
             reveal,
         }}
       >
+
         <HeroTitle
-          size={72}
-          width={950}
+          size={68}
+          width={920}
         >
           {getHeadline(
             shot
           )}
         </HeroTitle>
+
       </div>
 
     </AbsoluteFill>
@@ -3786,6 +4192,7 @@ const ShotRenderer = ({
     getTemplate(
       shot
     );
+
 
   const layout =
     getLayout(
@@ -3971,9 +4378,7 @@ const normalizeShots = ({
   ) {
 
     return timelineShots.map(
-      (
-        shot
-      ) => {
+      shot => {
 
         const matchingScene =
           safeArray(
@@ -4033,6 +4438,7 @@ const normalizeShots = ({
         item,
         index
       ) => ({
+
         ...item,
 
         startFrame:
@@ -4113,10 +4519,13 @@ const YouTubeV4 = ({
               )
             }
           >
+
             <ShotRenderer
               shot={shot}
             />
+
           </Sequence>
+
         )
       )}
 
@@ -4196,4 +4605,5 @@ export const RemotionRoot = () => (
       })
     }
   />
+
 );
