@@ -13,21 +13,24 @@ import {
 
 
 // ======================================================
-// YOUTUBE V4.6 — CINEMATIC CONTROLLED STOCK EDITION
+// YOUTUBE V4.7 — PREMIUM TRANSFORMATION EDITION
 // ======================================================
 //
-// CAMBIO PRINCIPAL V4.6:
+// MANTIENE:
+// - Stock del hook a 0.72x
+// - Trim inicial
+// - Tres fases separadas
+// - Arquitectura actual
+// - Composition ID YouTubeV4
 //
-// - El HOOK reproduce el stock más lentamente.
-// - Evitamos llegar a la parte débil/oscura final del clip.
-// - Pequeño trim inicial.
-// - El vídeo sigue teniendo movimiento gracias al pan/zoom.
-// - No cambiamos la arquitectura del manifest.
-// - No cambiamos n8n.
-// - No cambiamos Composition ID.
+// AÑADE:
+// - Barrido luminoso premium
+// - Transformación visual más marcada
+// - Entrada escalonada:
+//      ENTRADA -> REGLAS -> SALIDA
+// - Payoff final con impulso de escala
+// - Mejor profundidad y contraste
 //
-// COMPOSITION:
-// YouTubeV4
 // ======================================================
 
 
@@ -319,14 +322,88 @@ const Vignette = ({
 
 
 // ======================================================
+// PREMIUM LIGHT SWEEP
+// ======================================================
+
+const LightSweep = ({
+  progress,
+  opacity = 0.75,
+}) => {
+
+  const x =
+    interpolate(
+      progress,
+      [0, 1],
+      [-35, 135],
+      {
+        extrapolateLeft:
+          'clamp',
+
+        extrapolateRight:
+          'clamp',
+      }
+    );
+
+
+  return (
+    <AbsoluteFill
+      style={{
+        pointerEvents:
+          'none',
+
+        overflow:
+          'hidden',
+      }}
+    >
+
+      <div
+        style={{
+          position:
+            'absolute',
+
+          top:
+            '-15%',
+
+          bottom:
+            '-15%',
+
+          left:
+            `${x}%`,
+
+          width:
+            '16%',
+
+          transform:
+            'skewX(-14deg)',
+
+          background:
+            `linear-gradient(
+              90deg,
+              rgba(41,211,255,0),
+              rgba(41,211,255,${opacity * 0.28}),
+              rgba(255,255,255,${opacity}),
+              rgba(25,214,163,${opacity * 0.30}),
+              rgba(25,214,163,0)
+            )`,
+
+          filter:
+            'blur(12px)',
+
+          boxShadow:
+            '0 0 80px rgba(41,211,255,.40)',
+
+          mixBlendMode:
+            'screen',
+        }}
+      />
+
+    </AbsoluteFill>
+  );
+};
+
+
+// ======================================================
 // CINEMATIC VIDEO
-//
-// playbackRate:
-//   1.00 = normal
-//   0.72 = hook, evita avanzar demasiado en el clip
-//
-// trimStartSec:
-//   pequeño desplazamiento para evitar un inicio flojo
 // ======================================================
 
 const CinematicVideo = ({
@@ -762,6 +839,8 @@ const HeroTitle = ({
   width = 900,
 
   align = 'left',
+
+  style = {},
 }) => (
 
   <div
@@ -792,6 +871,8 @@ const HeroTitle = ({
 
       textShadow:
         '0 15px 48px rgba(0,0,0,.55)',
+
+      ...style,
     }}
   >
 
@@ -804,7 +885,7 @@ const HeroTitle = ({
 
 // ======================================================
 // ======================================================
-// 1. HOOK — V4.6
+// 1. HOOK V4.7
 // ======================================================
 // ======================================================
 
@@ -879,7 +960,7 @@ const HookTransformation = ({
 
 
   // ====================================================
-  // FASES TOTALMENTE SEPARADAS
+  // PHASES
   // ====================================================
 
   const phase1 =
@@ -928,6 +1009,10 @@ const HookTransformation = ({
     );
 
 
+  // ====================================================
+  // TRANSITIONS
+  // ====================================================
+
   const flash1 =
     interpolate(
       progress,
@@ -940,7 +1025,7 @@ const HookTransformation = ({
 
       [
         0,
-        0.34,
+        0.30,
         0,
       ],
 
@@ -966,7 +1051,7 @@ const HookTransformation = ({
 
       [
         0,
-        0.27,
+        0.24,
         0,
       ],
 
@@ -977,6 +1062,149 @@ const HookTransformation = ({
         extrapolateRight:
           'clamp',
       }
+    );
+
+
+  // ====================================================
+  // PREMIUM SWEEP
+  // ====================================================
+
+  const sweepProgress =
+    interpolate(
+      progress,
+
+      [
+        0.32,
+        0.40,
+        0.58,
+        0.69,
+      ],
+
+      [
+        0,
+        0.10,
+        0.88,
+        1,
+      ],
+
+      {
+        extrapolateLeft:
+          'clamp',
+
+        extrapolateRight:
+          'clamp',
+      }
+    );
+
+
+  const sweepOpacity =
+    fadeInOut(
+      progress,
+      0.31,
+      0.36,
+      0.62,
+      0.69
+    );
+
+
+  // ====================================================
+  // STAGGERED CARDS
+  // ====================================================
+
+  const card1 =
+    interpolate(
+      progress,
+      [0.37, 0.42],
+      [0, 1],
+      {
+        extrapolateLeft:
+          'clamp',
+        extrapolateRight:
+          'clamp',
+      }
+    );
+
+
+  const card2 =
+    interpolate(
+      progress,
+      [0.43, 0.48],
+      [0, 1],
+      {
+        extrapolateLeft:
+          'clamp',
+        extrapolateRight:
+          'clamp',
+      }
+    );
+
+
+  const card3 =
+    interpolate(
+      progress,
+      [0.49, 0.54],
+      [0, 1],
+      {
+        extrapolateLeft:
+          'clamp',
+        extrapolateRight:
+          'clamp',
+      }
+    );
+
+
+  const cardReveals =
+    [
+      card1,
+      card2,
+      card3,
+    ];
+
+
+  // ====================================================
+  // FINAL PAYOFF PUNCH
+  // ====================================================
+
+  const payoffPunch =
+    spring({
+      frame:
+        Math.max(
+          0,
+          frame -
+          Math.round(
+            duration *
+            0.71
+          )
+        ),
+
+      fps,
+
+      config: {
+        damping:
+          13,
+
+        stiffness:
+          125,
+
+        mass:
+          0.78,
+      },
+    });
+
+
+  const payoffScale =
+    interpolate(
+      payoffPunch,
+      [0, 1],
+      [0.94, 1]
+    );
+
+
+  const payoffX =
+    interpolate(
+      payoffPunch,
+      [0, 1],
+      [-28, 0]
     );
 
 
@@ -999,9 +1227,9 @@ const HookTransformation = ({
 
             darkness={0.045}
 
-            saturation={1.10}
+            saturation={1.11}
 
-            contrast={1.06}
+            contrast={1.07}
 
             brightness={1.04}
 
@@ -1331,7 +1559,7 @@ const HookTransformation = ({
       </AbsoluteFill>
 
 
-      {/* TRANSITION 1 */}
+      {/* TRANSITION FLASH 1 */}
 
       <AbsoluteFill
         style={{
@@ -1339,7 +1567,7 @@ const HookTransformation = ({
             flash1,
 
           background:
-            'linear-gradient(110deg,rgba(255,255,255,.60),rgba(41,211,255,.30),transparent)',
+            'linear-gradient(110deg,rgba(255,255,255,.55),rgba(41,211,255,.28),transparent)',
 
           mixBlendMode:
             'screen',
@@ -1348,7 +1576,7 @@ const HookTransformation = ({
 
 
       {/* =================================================
-          PHASE 2 — TRANSFORM
+          PHASE 2 — TRANSFORMATION
       ================================================= */}
 
       <AbsoluteFill
@@ -1363,7 +1591,7 @@ const HookTransformation = ({
           top="55%"
           size={1100}
           color="41,211,255"
-          opacity={0.13}
+          opacity={0.15}
         />
 
 
@@ -1481,106 +1709,148 @@ const HookTransformation = ({
             (
               item,
               index
-            ) => (
+            ) => {
 
-              <React.Fragment
-                key={
-                  item.label
-                }
-              >
+              const reveal =
+                cardReveals[index];
 
-                <GlassPanel
-                  style={{
-                    padding:
-                      '23px 25px',
 
-                    minHeight:
-                      124,
+              const translateY =
+                interpolate(
+                  reveal,
+                  [0, 1],
+                  [34, 0]
+                );
 
-                    transform:
-                      `translateY(${Math.sin((frame + index * 9) / 14) * 3}px)`,
-                  }}
+
+              const scale =
+                interpolate(
+                  reveal,
+                  [0, 1],
+                  [0.94, 1]
+                );
+
+
+              return (
+
+                <React.Fragment
+                  key={
+                    item.label
+                  }
                 >
 
-                  <div
+                  <GlassPanel
                     style={{
-                      color:
-                        item.color,
+                      padding:
+                        '23px 25px',
 
-                      fontFamily:
-                        FONT,
+                      minHeight:
+                        124,
 
-                      fontSize:
-                        16,
+                      opacity:
+                        reveal,
 
-                      fontWeight:
-                        900,
+                      transform:
+                        `translateY(${translateY}px) scale(${scale})`,
 
-                      letterSpacing:
-                        1.7,
+                      border:
+                        `1px solid ${item.color}55`,
+
+                      boxShadow:
+                        reveal > 0.8
+                          ? `0 18px 55px ${item.color}20`
+                          : 'none',
                     }}
                   >
-                    {item.label}
-                  </div>
-
-
-                  <div
-                    style={{
-                      marginTop:
-                        12,
-
-                      color:
-                        '#fff',
-
-                      fontFamily:
-                        FONT,
-
-                      fontSize:
-                        27,
-
-                      fontWeight:
-                        800,
-                    }}
-                  >
-                    {item.value}
-                  </div>
-
-                </GlassPanel>
-
-
-                {index < 2
-                  ? (
 
                     <div
                       style={{
-                        textAlign:
-                          'center',
+                        color:
+                          item.color,
 
                         fontFamily:
                           FONT,
 
-                        color:
-                          COLORS.cyan,
-
                         fontSize:
-                          40,
+                          16,
 
                         fontWeight:
                           900,
 
-                        opacity:
-                          0.76,
+                        letterSpacing:
+                          1.7,
                       }}
                     >
-                      →
+                      {item.label}
                     </div>
 
-                  )
-                  : null}
 
-              </React.Fragment>
+                    <div
+                      style={{
+                        marginTop:
+                          12,
 
-            )
+                        color:
+                          '#fff',
+
+                        fontFamily:
+                          FONT,
+
+                        fontSize:
+                          27,
+
+                        fontWeight:
+                          800,
+                      }}
+                    >
+                      {item.value}
+                    </div>
+
+                  </GlassPanel>
+
+
+                  {index < 2
+                    ? (
+
+                      <div
+                        style={{
+                          textAlign:
+                            'center',
+
+                          fontFamily:
+                            FONT,
+
+                          color:
+                            COLORS.cyan,
+
+                          fontSize:
+                            40,
+
+                          fontWeight:
+                            900,
+
+                          opacity:
+                            Math.min(
+                              cardReveals[
+                                index + 1
+                              ],
+                              0.78
+                            ),
+
+                          transform:
+                            `scale(${0.8 + cardReveals[index + 1] * 0.2})`,
+                        }}
+                      >
+                        →
+                      </div>
+
+                    )
+                    : null}
+
+                </React.Fragment>
+
+              );
+            }
           )}
 
         </div>
@@ -1588,7 +1858,29 @@ const HookTransformation = ({
       </AbsoluteFill>
 
 
-      {/* TRANSITION 2 */}
+      {/* PREMIUM LIGHT SWEEP */}
+
+      <AbsoluteFill
+        style={{
+          opacity:
+            sweepOpacity,
+        }}
+      >
+
+        <LightSweep
+          progress={
+            sweepProgress
+          }
+
+          opacity={
+            0.78
+          }
+        />
+
+      </AbsoluteFill>
+
+
+      {/* TRANSITION FLASH 2 */}
 
       <AbsoluteFill
         style={{
@@ -1596,7 +1888,7 @@ const HookTransformation = ({
             flash2,
 
           background:
-            'linear-gradient(110deg,transparent,rgba(25,214,163,.34),rgba(255,255,255,.32))',
+            'linear-gradient(110deg,transparent,rgba(25,214,163,.34),rgba(255,255,255,.30))',
 
           mixBlendMode:
             'screen',
@@ -1605,7 +1897,7 @@ const HookTransformation = ({
 
 
       {/* =================================================
-          PHASE 3 — RESULT
+          PHASE 3 — PAYOFF
       ================================================= */}
 
       <AbsoluteFill
@@ -1618,8 +1910,17 @@ const HookTransformation = ({
         <AbsoluteFill
           style={{
             background:
-              'linear-gradient(90deg,rgba(3,5,9,.63) 0%,rgba(3,5,9,.21) 46%,rgba(3,5,9,.015) 76%,rgba(3,5,9,.01) 100%)',
+              'linear-gradient(90deg,rgba(3,5,9,.61) 0%,rgba(3,5,9,.19) 46%,rgba(3,5,9,.01) 76%,rgba(3,5,9,.005) 100%)',
           }}
+        />
+
+
+        <AmbientGlow
+          left="30%"
+          top="42%"
+          size={900}
+          color="25,214,163"
+          opacity={0.09}
         />
 
 
@@ -1658,12 +1959,23 @@ const HookTransformation = ({
 
             maxWidth:
               880,
+
+            transform:
+              `translateX(${payoffX}px) scale(${payoffScale})`,
+
+            transformOrigin:
+              'left center',
           }}
         >
 
           <HeroTitle
             size={78}
             width={880}
+
+            style={{
+              textShadow:
+                '0 18px 60px rgba(0,0,0,.58),0 0 36px rgba(25,214,163,.10)',
+            }}
           >
             {secondText}
           </HeroTitle>
@@ -2813,7 +3125,7 @@ const GeminiGemSetup = ({
 
 
 // ======================================================
-// 5. CLAUDE / INSTRUCTION BUILDER
+// 5. CLAUDE
 // ======================================================
 
 const InstructionBuilder = ({
@@ -3124,7 +3436,7 @@ const InstructionBuilder = ({
             marginTop:
               27,
 
-          padding:
+            padding:
               '18px 22px',
 
             borderRadius:
@@ -3162,7 +3474,7 @@ const InstructionBuilder = ({
 
 
 // ======================================================
-// 6. DUAL TOOL COMPARISON
+// 6. DUAL COMPARISON
 // ======================================================
 
 const DualToolComparison = ({
