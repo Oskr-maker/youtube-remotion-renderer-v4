@@ -16,10 +16,10 @@ import {
 // YOUTUBE V5 LONG FORM VISUAL ENGINE
 //
 // Compatible con:
-// - Endpoint /render-v4
-// - Composition ID YouTubeV4
+// - Composition ID: YouTubeV4
+// - Endpoint actual: /render-v4
 //
-// Añade soporte para:
+// Familias soportadas:
 // - logic_hook
 // - boxes_fruit
 // - logic_reasoning
@@ -27,7 +27,12 @@ import {
 // - comparison
 // - cta
 //
-// Mantiene fallback genérico.
+// V5.2:
+// - frutas SVG internas
+// - cajas 3D estilizadas
+// - etiquetas premium
+// - animación secuencial de errores
+// - mejor timing cinematográfico
 // ======================================================
 
 
@@ -51,11 +56,8 @@ const DEFAULT_PROPS = {
 
 const COLORS = {
   bg: '#05070c',
-
   bgSoft: '#0a0f19',
-
   panel: '#111827',
-
   panelSoft: '#151e2d',
 
   white: '#ffffff',
@@ -67,16 +69,20 @@ const COLORS = {
     'rgba(255,255,255,0.48)',
 
   blue: '#6d7cff',
-
   cyan: '#29d3ff',
-
   green: '#19d6a3',
-
   amber: '#ffbd59',
-
   red: '#ff6676',
-
   purple: '#a879ff',
+
+  cardboard:
+    '#9a6a3a',
+
+  cardboardDark:
+    '#694526',
+
+  cardboardLight:
+    '#bf8950',
 
   border:
     'rgba(255,255,255,0.14)',
@@ -331,6 +337,87 @@ const Vignette = ({
   />
 
 );
+
+
+// ======================================================
+// LIGHT SWEEP
+// ======================================================
+
+const LightSweep = ({
+  progress,
+  opacity = 0.65,
+}) => {
+
+  const x =
+    interpolate(
+      progress,
+      [0, 1],
+      [-30, 130],
+      {
+        extrapolateLeft:
+          'clamp',
+
+        extrapolateRight:
+          'clamp',
+      }
+    );
+
+
+  return (
+
+    <AbsoluteFill
+      style={{
+        overflow:
+          'hidden',
+
+        pointerEvents:
+          'none',
+      }}
+    >
+
+      <div
+        style={{
+          position:
+            'absolute',
+
+          top:
+            '-20%',
+
+          bottom:
+            '-20%',
+
+          left:
+            `${x}%`,
+
+          width:
+            '14%',
+
+          transform:
+            'skewX(-15deg)',
+
+          background:
+            `linear-gradient(
+              90deg,
+              rgba(255,255,255,0),
+              rgba(255,255,255,${opacity * 0.22}),
+              rgba(41,211,255,${opacity}),
+              rgba(255,255,255,0)
+            )`,
+
+          filter:
+            'blur(15px)',
+
+          mixBlendMode:
+            'screen',
+
+          boxShadow:
+            '0 0 90px rgba(41,211,255,.35)',
+        }}
+      />
+
+    </AbsoluteFill>
+  );
+};
 
 
 // ======================================================
@@ -677,6 +764,7 @@ const CinematicVideo = ({
         }}
       />
 
+
       <Vignette
         opacity={0.25}
       />
@@ -687,7 +775,677 @@ const CinematicVideo = ({
 
 
 // ======================================================
-// LOGIC HOOK
+// SVG FRUIT ICONS
+// ======================================================
+
+const AppleIcon = ({
+  size = 82,
+}) => (
+
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 120 120"
+  >
+
+    <defs>
+
+      <radialGradient
+        id="appleGradient"
+        cx="35%"
+        cy="30%"
+        r="80%"
+      >
+        <stop
+          offset="0%"
+          stopColor="#ff7b82"
+        />
+
+        <stop
+          offset="55%"
+          stopColor="#e94a55"
+        />
+
+        <stop
+          offset="100%"
+          stopColor="#a91f2c"
+        />
+      </radialGradient>
+
+    </defs>
+
+
+    <path
+      d="
+        M60 34
+        C45 19 25 26 20 47
+        C14 72 30 102 57 105
+        C84 108 104 81 101 55
+        C98 31 74 22 60 34 Z
+      "
+      fill="url(#appleGradient)"
+    />
+
+
+    <path
+      d="
+        M59 33
+        C58 21 63 13 72 8
+      "
+      stroke="#68432c"
+      strokeWidth="7"
+      strokeLinecap="round"
+      fill="none"
+    />
+
+
+    <path
+      d="
+        M69 15
+        C82 11 89 16 92 26
+        C80 27 72 23 69 15 Z
+      "
+      fill="#35b36c"
+    />
+
+
+    <ellipse
+      cx="42"
+      cy="48"
+      rx="11"
+      ry="18"
+      fill="rgba(255,255,255,.14)"
+      transform="rotate(25 42 48)"
+    />
+
+  </svg>
+
+);
+
+
+const OrangeIcon = ({
+  size = 82,
+}) => (
+
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 120 120"
+  >
+
+    <defs>
+
+      <radialGradient
+        id="orangeGradient"
+        cx="35%"
+        cy="30%"
+        r="75%"
+      >
+        <stop
+          offset="0%"
+          stopColor="#ffc05b"
+        />
+
+        <stop
+          offset="55%"
+          stopColor="#ff951f"
+        />
+
+        <stop
+          offset="100%"
+          stopColor="#cf6210"
+        />
+      </radialGradient>
+
+    </defs>
+
+
+    <circle
+      cx="60"
+      cy="64"
+      r="43"
+      fill="url(#orangeGradient)"
+    />
+
+
+    <path
+      d="
+        M59 21
+        C65 11 75 8 86 11
+        C81 22 72 27 59 21 Z
+      "
+      fill="#38ad61"
+    />
+
+
+    <path
+      d="
+        M60 24
+        C60 17 60 12 62 8
+      "
+      stroke="#725034"
+      strokeWidth="6"
+      strokeLinecap="round"
+      fill="none"
+    />
+
+
+    <ellipse
+      cx="43"
+      cy="48"
+      rx="9"
+      ry="15"
+      fill="rgba(255,255,255,.15)"
+      transform="rotate(30 43 48)"
+    />
+
+  </svg>
+
+);
+
+
+// ======================================================
+// FRUIT DISPLAY
+// ======================================================
+
+const FruitDisplay = ({
+  type,
+  size = 82,
+}) => {
+
+  if (
+    type ===
+    'apple'
+  ) {
+
+    return (
+      <AppleIcon
+        size={size}
+      />
+    );
+  }
+
+
+  if (
+    type ===
+    'orange'
+  ) {
+
+    return (
+      <OrangeIcon
+        size={size}
+      />
+    );
+  }
+
+
+  return (
+
+    <div
+      style={{
+        display:
+          'flex',
+
+        alignItems:
+          'center',
+
+        justifyContent:
+          'center',
+
+        gap:
+          4,
+      }}
+    >
+
+      <AppleIcon
+        size={size * 0.78}
+      />
+
+      <OrangeIcon
+        size={size * 0.78}
+      />
+
+    </div>
+  );
+};
+
+
+// ======================================================
+// PREMIUM CARDBOARD BOX
+// ======================================================
+
+const CardboardBox = ({
+  label,
+
+  fruitType,
+
+  active = false,
+
+  errorProgress = 0,
+
+  entrance = 1,
+
+  scale = 1,
+
+  index = 0,
+}) => {
+
+  const accent =
+    fruitType === 'apple'
+      ? COLORS.red
+
+      : fruitType ===
+        'orange'
+      ? COLORS.amber
+
+      : COLORS.cyan;
+
+
+  return (
+
+    <div
+      style={{
+        width:
+          390,
+
+        height:
+          325,
+
+        position:
+          'relative',
+
+        opacity:
+          entrance,
+
+        transform:
+          `translateY(${(1 - entrance) * 60}px) scale(${entrance * scale}) perspective(900px) rotateX(-2deg)`,
+
+        transformOrigin:
+          'center bottom',
+      }}
+    >
+
+      {/* SHADOW */}
+
+      <div
+        style={{
+          position:
+            'absolute',
+
+          left:
+            40,
+
+          right:
+            40,
+
+          bottom:
+            -22,
+
+          height:
+            45,
+
+          borderRadius:
+            '50%',
+
+          background:
+            'rgba(0,0,0,.48)',
+
+          filter:
+            'blur(18px)',
+
+          opacity:
+            0.75,
+        }}
+      />
+
+
+      {/* BOX BODY */}
+
+      <div
+        style={{
+          position:
+            'absolute',
+
+          left:
+            18,
+
+          right:
+            18,
+
+          top:
+            58,
+
+          bottom:
+            0,
+
+          borderRadius:
+            '10px 10px 24px 24px',
+
+          background:
+            `linear-gradient(
+              145deg,
+              ${COLORS.cardboardLight} 0%,
+              ${COLORS.cardboard} 52%,
+              ${COLORS.cardboardDark} 100%
+            )`,
+
+          border:
+            active
+              ? `2px solid ${accent}`
+              : '1px solid rgba(255,255,255,.12)',
+
+          boxShadow:
+            active
+              ? `0 35px 100px rgba(0,0,0,.48),
+                 0 0 55px ${accent}35`
+              : '0 35px 100px rgba(0,0,0,.48)',
+
+          overflow:
+            'hidden',
+        }}
+      >
+
+        {/* CARDBOARD TEXTURE */}
+
+        <div
+          style={{
+            position:
+              'absolute',
+
+            inset:
+              0,
+
+            opacity:
+              0.14,
+
+            backgroundImage:
+              'repeating-linear-gradient(0deg,rgba(255,255,255,.09) 0px,rgba(255,255,255,.09) 1px,transparent 1px,transparent 5px)',
+          }}
+        />
+
+
+        {/* CENTER TAPE */}
+
+        <div
+          style={{
+            position:
+              'absolute',
+
+            left:
+              '47%',
+
+            top:
+              0,
+
+            bottom:
+              0,
+
+            width:
+              '6%',
+
+            background:
+              'rgba(255,223,170,.14)',
+          }}
+        />
+
+
+        {/* FRUIT */}
+
+        <div
+          style={{
+            position:
+              'absolute',
+
+            left:
+              0,
+
+            right:
+              0,
+
+            top:
+              40,
+
+            display:
+              'flex',
+
+            justifyContent:
+              'center',
+
+            filter:
+              'drop-shadow(0 15px 22px rgba(0,0,0,.32))',
+          }}
+        >
+
+          <FruitDisplay
+            type={
+              fruitType
+            }
+
+            size={
+              fruitType ===
+                'mixed'
+                ? 90
+                : 100
+            }
+          />
+
+        </div>
+
+
+        {/* LABEL */}
+
+        <div
+          style={{
+            position:
+              'absolute',
+
+            left:
+              33,
+
+            right:
+              33,
+
+            bottom:
+              28,
+
+            padding:
+              '17px 16px',
+
+            borderRadius:
+              10,
+
+            background:
+              '#f4e8cf',
+
+            border:
+              '1px solid rgba(76,50,28,.35)',
+
+            boxShadow:
+              '0 7px 18px rgba(0,0,0,.24)',
+
+            textAlign:
+              'center',
+
+            color:
+              '#3d2b1d',
+
+            fontFamily:
+              FONT,
+
+            fontSize:
+              25,
+
+            fontWeight:
+              950,
+
+            letterSpacing:
+              1.2,
+
+            transform:
+              'rotate(-1deg)',
+          }}
+        >
+          {label}
+        </div>
+
+
+        {/* INCORRECT MARK */}
+
+        <div
+          style={{
+            position:
+              'absolute',
+
+            right:
+              18,
+
+            top:
+              16,
+
+            width:
+              54,
+
+            height:
+              54,
+
+            borderRadius:
+              '50%',
+
+            display:
+              'flex',
+
+            justifyContent:
+              'center',
+
+            alignItems:
+              'center',
+
+            background:
+              'rgba(255,255,255,.92)',
+
+            border:
+              `3px solid ${COLORS.red}`,
+
+            color:
+              COLORS.red,
+
+            fontFamily:
+              FONT,
+
+            fontSize:
+              34,
+
+            fontWeight:
+              950,
+
+            opacity:
+              errorProgress,
+
+            transform:
+              `scale(${0.55 + errorProgress * 0.45}) rotate(${(1 - errorProgress) * -25}deg)`,
+
+            boxShadow:
+              '0 10px 30px rgba(0,0,0,.30)',
+          }}
+        >
+          ×
+        </div>
+
+      </div>
+
+
+      {/* TOP FLAPS */}
+
+      <div
+        style={{
+          position:
+            'absolute',
+
+          left:
+            34,
+
+          top:
+            16,
+
+          width:
+            155,
+
+          height:
+            74,
+
+          background:
+            `linear-gradient(
+              135deg,
+              ${COLORS.cardboardLight},
+              ${COLORS.cardboard}
+            )`,
+
+          clipPath:
+            'polygon(0 20%,100% 0,88% 100%,12% 100%)',
+
+          transform:
+            'rotate(-7deg)',
+
+          transformOrigin:
+            'bottom center',
+
+          border:
+            '1px solid rgba(255,255,255,.10)',
+
+          boxShadow:
+            '0 8px 20px rgba(0,0,0,.16)',
+        }}
+      />
+
+
+      <div
+        style={{
+          position:
+            'absolute',
+
+          right:
+            34,
+
+          top:
+            16,
+
+          width:
+            155,
+
+          height:
+            74,
+
+          background:
+            `linear-gradient(
+              225deg,
+              ${COLORS.cardboardLight},
+              ${COLORS.cardboard}
+            )`,
+
+          clipPath:
+            'polygon(0 0,100% 20%,88% 100%,12% 100%)',
+
+          transform:
+            'rotate(7deg)',
+
+          transformOrigin:
+            'bottom center',
+
+          border:
+            '1px solid rgba(255,255,255,.10)',
+
+          boxShadow:
+            '0 8px 20px rgba(0,0,0,.16)',
+        }}
+      />
+
+    </div>
+  );
+};
+
+
+// ======================================================
+// LOGIC HOOK - CINEMATIC V5.2
 // ======================================================
 
 const LogicHookStage = ({
@@ -740,9 +1498,45 @@ const LogicHookStage = ({
     '¿Puedes resolverlo?';
 
 
-  const entrance =
+  // ====================================================
+  // INTRO
+  // ====================================================
+
+  const headlineOpacity =
+    interpolate(
+      progress,
+      [0, 0.10],
+      [0, 1],
+      {
+        extrapolateLeft:
+          'clamp',
+
+        extrapolateRight:
+          'clamp',
+      }
+    );
+
+
+  const cameraScale =
+    interpolate(
+      progress,
+      [0, 1],
+      [1, 1.08]
+    );
+
+
+  // ====================================================
+  // BOX ENTRANCE
+  // ====================================================
+
+  const box1 =
     spring({
-      frame,
+      frame:
+        Math.max(
+          0,
+          frame -
+          1
+        ),
 
       fps,
 
@@ -751,7 +1545,7 @@ const LogicHookStage = ({
           14,
 
         stiffness:
-          115,
+          120,
 
         mass:
           0.8,
@@ -759,18 +1553,62 @@ const LogicHookStage = ({
     });
 
 
-  const cameraScale =
-    interpolate(
-      progress,
-      [0, 1],
-      [1, 1.075]
+  const box2 =
+    spring({
+      frame:
+        Math.max(
+          0,
+          frame -
+          5
+        ),
+
+      fps,
+
+      config: {
+        damping:
+          14,
+
+        stiffness:
+          120,
+
+        mass:
+          0.8,
+      },
+    });
+
+
+  const box3 =
+    spring({
+      frame:
+        Math.max(
+          0,
+          frame -
+          9
+        ),
+
+      fps,
+
+      config: {
+        damping:
+          14,
+
+        stiffness:
+          120,
+
+        mass:
+          0.8,
+      },
     );
 
 
-  const labelsProgress =
+  // ====================================================
+  // SEQUENTIAL ERROR MARKS
+  // ====================================================
+
+  const error1 =
     interpolate(
       progress,
-      [0.15, 0.32],
+      [0.34, 0.43],
       [0, 1],
       {
         extrapolateLeft:
@@ -782,10 +1620,10 @@ const LogicHookStage = ({
     );
 
 
-  const mysteryProgress =
+  const error2 =
     interpolate(
       progress,
-      [0.30, 0.58],
+      [0.42, 0.51],
       [0, 1],
       {
         extrapolateLeft:
@@ -796,11 +1634,44 @@ const LogicHookStage = ({
       }
     );
 
+
+  const error3 =
+    interpolate(
+      progress,
+      [0.50, 0.59],
+      [0, 1],
+      {
+        extrapolateLeft:
+          'clamp',
+
+        extrapolateRight:
+          'clamp',
+      }
+    );
+
+
+  // ====================================================
+  // WRONG MESSAGE
+  // ====================================================
+
+  const wrongMessage =
+    fadeInOut(
+      progress,
+      0.48,
+      0.58,
+      0.68,
+      0.76
+    );
+
+
+  // ====================================================
+  // QUESTION
+  // ====================================================
 
   const questionProgress =
     interpolate(
       progress,
-      [0.65, 0.83],
+      [0.71, 0.84],
       [0, 1],
       {
         extrapolateLeft:
@@ -812,31 +1683,77 @@ const LogicHookStage = ({
     );
 
 
-  const boxes = [
-    {
-      label:
-        'MANZANAS',
+  const questionPunch =
+    spring({
+      frame:
+        Math.max(
+          0,
+          frame -
+          Math.round(
+            duration *
+            0.72
+          )
+        ),
 
-      icon:
-        '🍎',
-    },
+      fps,
 
-    {
-      label:
-        'NARANJAS',
+      config: {
+        damping:
+          12,
 
-      icon:
-        '🍊',
-    },
+        stiffness:
+          135,
 
-    {
-      label:
-        'MEZCLA',
+        mass:
+          0.72,
+      },
+    });
 
-      icon:
-        '🍎 🍊',
-    },
-  ];
+
+  const boxes =
+    [
+      {
+        label:
+          'MANZANAS',
+
+        fruitType:
+          'apple',
+
+        entrance:
+          box1,
+
+        error:
+          error1,
+      },
+
+      {
+        label:
+          'NARANJAS',
+
+        fruitType:
+          'orange',
+
+        entrance:
+          box2,
+
+        error:
+          error2,
+      },
+
+      {
+        label:
+          'MEZCLA',
+
+        fruitType:
+          'mixed',
+
+        entrance:
+          box3,
+
+        error:
+          error3,
+      },
+    ];
 
 
   return (
@@ -854,23 +1771,23 @@ const LogicHookStage = ({
       <BaseBackground />
 
       <Grid
-        opacity={0.045}
+        opacity={0.04}
       />
 
       <AmbientGlow
-        left="50%"
-        top="48%"
-        size={1300}
+        left="48%"
+        top="47%"
+        size={1350}
         color="41,211,255"
-        opacity={0.20}
+        opacity={0.18}
       />
 
       <AmbientGlow
-        left="30%"
-        top="58%"
+        left="25%"
+        top="60%"
         size={850}
         color="168,121,255"
-        opacity={0.09}
+        opacity={0.08}
       />
 
 
@@ -881,13 +1798,15 @@ const LogicHookStage = ({
         }}
       >
 
+        {/* TOP LABEL */}
+
         <div
           style={{
             position:
               'absolute',
 
             top:
-              58,
+              54,
 
             left:
               0,
@@ -900,6 +1819,9 @@ const LogicHookStage = ({
 
             justifyContent:
               'center',
+
+            opacity:
+              headlineOpacity,
           }}
         >
 
@@ -914,13 +1836,15 @@ const LogicHookStage = ({
         </div>
 
 
+        {/* MAIN TITLE */}
+
         <div
           style={{
             position:
               'absolute',
 
             top:
-              115,
+              105,
 
             left:
               0,
@@ -935,18 +1859,7 @@ const LogicHookStage = ({
               'center',
 
             opacity:
-              interpolate(
-                progress,
-                [0, 0.08],
-                [0, 1],
-                {
-                  extrapolateLeft:
-                    'clamp',
-
-                  extrapolateRight:
-                    'clamp',
-                }
-              ),
+              headlineOpacity,
           }}
         >
 
@@ -961,19 +1874,21 @@ const LogicHookStage = ({
         </div>
 
 
+        {/* BOXES */}
+
         <div
           style={{
             position:
               'absolute',
+
+            top:
+              300,
 
             left:
               0,
 
             right:
               0,
-
-            top:
-              305,
 
             display:
               'flex',
@@ -982,13 +1897,7 @@ const LogicHookStage = ({
               'center',
 
             gap:
-              65,
-
-            transform:
-              `translateY(${(1 - entrance) * 70}px)`,
-
-            opacity:
-              entrance,
+              58,
           }}
         >
 
@@ -996,264 +1905,50 @@ const LogicHookStage = ({
             (
               box,
               index
-            ) => {
+            ) => (
 
-              const localEntrance =
-                spring({
-                  frame:
-                    Math.max(
-                      0,
-                      frame -
-                      index * 4
-                    ),
+              <CardboardBox
+                key={
+                  box.label
+                }
 
-                  fps,
+                label={
+                  box.label
+                }
 
-                  config: {
-                    damping:
-                      14,
+                fruitType={
+                  box.fruitType
+                }
 
-                    stiffness:
-                      120,
-                  },
-                });
+                entrance={
+                  box.entrance
+                }
 
+                errorProgress={
+                  box.error
+                }
 
-              const pulse =
-                1 +
-                Math.sin(
+                scale={
+                  1 +
                   (
-                    frame +
-                    index * 9
-                  ) /
-                  5
-                ) *
-                0.012 *
-                mysteryProgress;
-
-
-              return (
-
-                <div
-                  key={
-                    box.label
-                  }
-
-                  style={{
-                    width:
-                      390,
-
-                    height:
-                      315,
-
-                    position:
-                      'relative',
-
-                    overflow:
-                      'hidden',
-
-                    borderRadius:
-                      30,
-
-                    background:
-                      'linear-gradient(145deg,#1c2636,#0d131e)',
-
-                    border:
-                      `2px solid rgba(255,255,255,${0.14 + mysteryProgress * 0.1})`,
-
-                    boxShadow:
-                      `0 35px 90px rgba(0,0,0,.45),
-                       0 0 ${50 * mysteryProgress}px rgba(41,211,255,.18)`,
-
-                    opacity:
-                      localEntrance,
-
-                    transform:
-                      `scale(${localEntrance * pulse}) translateY(${(1 - localEntrance) * 45}px)`,
-                  }}
-                >
-
-                  <div
-                    style={{
-                      position:
-                        'absolute',
-
-                      left:
-                        20,
-
-                      right:
-                        20,
-
-                      top:
-                        20,
-
-                      height:
-                        74,
-
-                      borderRadius:
-                        18,
-
-                      background:
-                        'linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.025))',
-
-                      border:
-                        '1px solid rgba(255,255,255,.10)',
-                    }}
-                  />
-
-
-                  <div
-                    style={{
-                      position:
-                        'absolute',
-
-                      left:
-                        0,
-
-                      right:
-                        0,
-
-                      top:
-                        105,
-
-                      textAlign:
-                        'center',
-
-                      fontSize:
-                        72,
-
-                      filter:
-                        'drop-shadow(0 14px 30px rgba(0,0,0,.35))',
-                    }}
-                  >
-
-                    {box.icon}
-
-                  </div>
-
-
-                  <div
-                    style={{
-                      position:
-                        'absolute',
-
-                      left:
-                        30,
-
-                      right:
-                        30,
-
-                      bottom:
-                        32,
-
-                      padding:
-                        '17px 15px',
-
-                      borderRadius:
-                        14,
-
-                      textAlign:
-                        'center',
-
-                      fontFamily:
-                        FONT,
-
-                      fontSize:
-                        27,
-
-                      fontWeight:
-                        900,
-
-                      letterSpacing:
-                        1.1,
-
-                      color:
-                        '#fff',
-
-                      background:
-                        'rgba(255,189,89,.14)',
-
-                      border:
-                        '1px solid rgba(255,189,89,.50)',
-
-                      transform:
-                        `scaleY(${labelsProgress})`,
-
-                      opacity:
-                        labelsProgress,
-
-                      transformOrigin:
-                        'center',
-                    }}
-                  >
-
-                    {box.label}
-
-                  </div>
-
-
-                  <div
-                    style={{
-                      position:
-                        'absolute',
-
-                      right:
-                        18,
-
-                      top:
-                        18,
-
-                      width:
-                        48,
-
-                      height:
-                        48,
-
-                      borderRadius:
-                        '50%',
-
-                      display:
-                        'flex',
-
-                      alignItems:
-                        'center',
-
-                      justifyContent:
-                        'center',
-
-                      background:
-                        'rgba(255,102,118,.15)',
-
-                      border:
-                        '1px solid rgba(255,102,118,.65)',
-
-                      color:
-                        COLORS.red,
-
-                      fontSize:
-                        31,
-
-                      fontWeight:
-                        900,
-
-                      opacity:
-                        mysteryProgress,
-
-                      transform:
-                        `scale(${0.7 + mysteryProgress * 0.3})`,
-                    }}
-                  >
-                    ×
-                  </div>
-
-                </div>
-
-              );
-            }
+                    index === 1
+                      ? 0.006
+                      : 0
+                  )
+                }
+
+                index={
+                  index
+                }
+              />
+
+            )
           )}
 
         </div>
 
+
+        {/* WRONG MESSAGE */}
 
         <div
           style={{
@@ -1267,43 +1962,53 @@ const LogicHookStage = ({
               0,
 
             bottom:
-              105,
+              100,
 
-            textAlign:
+            display:
+              'flex',
+
+            justifyContent:
               'center',
 
             opacity:
-              mysteryProgress *
-              (
-                1 -
-                questionProgress *
-                0.9
-              ),
+              wrongMessage,
 
             transform:
-              `translateY(${(1 - mysteryProgress) * 25}px)`,
+              `translateY(${(1 - wrongMessage) * 25}px) scale(${0.96 + wrongMessage * 0.04})`,
           }}
         >
 
           <div
             style={{
-              fontFamily:
-                FONT,
+              padding:
+                '18px 32px',
 
-              fontSize:
-                42,
+              borderRadius:
+                18,
 
-              fontWeight:
-                900,
+              background:
+                'rgba(255,102,118,.10)',
+
+              border:
+                '1px solid rgba(255,102,118,.42)',
 
               color:
                 COLORS.red,
 
+              fontFamily:
+                FONT,
+
+              fontSize:
+                41,
+
+              fontWeight:
+                950,
+
               letterSpacing:
                 -0.8,
 
-              textShadow:
-                '0 10px 35px rgba(0,0,0,.45)',
+              boxShadow:
+                '0 20px 70px rgba(0,0,0,.34)',
             }}
           >
             {title2}
@@ -1313,6 +2018,8 @@ const LogicHookStage = ({
 
       </AbsoluteFill>
 
+
+      {/* QUESTION PAYOFF */}
 
       <AbsoluteFill
         style={{
@@ -1326,20 +2033,26 @@ const LogicHookStage = ({
             questionProgress,
 
           background:
-            `rgba(4,7,12,${questionProgress * 0.74})`,
+            `rgba(4,7,12,${questionProgress * 0.76})`,
         }}
       >
 
         <GlassPanel
           style={{
             padding:
-              '42px 74px',
+              '42px 75px',
 
             transform:
-              `scale(${0.88 + questionProgress * 0.12})`,
+              `scale(${0.86 + questionPunch * 0.14})`,
 
             textAlign:
               'center',
+
+            border:
+              '1px solid rgba(41,211,255,.26)',
+
+            boxShadow:
+              '0 40px 130px rgba(0,0,0,.62)',
           }}
         >
 
@@ -1355,13 +2068,13 @@ const LogicHookStage = ({
           <div
             style={{
               marginTop:
-                26,
+                27,
 
               fontFamily:
                 FONT,
 
               fontSize:
-                70,
+                72,
 
               fontWeight:
                 950,
@@ -1370,7 +2083,10 @@ const LogicHookStage = ({
                 '#fff',
 
               letterSpacing:
-                -2,
+                -2.2,
+
+              textShadow:
+                '0 18px 48px rgba(0,0,0,.5)',
             }}
           >
             {title3}
@@ -1381,8 +2097,28 @@ const LogicHookStage = ({
       </AbsoluteFill>
 
 
+      <LightSweep
+        progress={
+          clamp(
+            (
+              progress -
+              0.18
+            ) /
+            0.55,
+            0,
+            1
+          )
+        }
+
+        opacity={
+          wrongMessage *
+          0.55
+        }
+      />
+
+
       <Vignette
-        opacity={0.30}
+        opacity={0.28}
       />
 
     </AbsoluteFill>
@@ -1423,21 +2159,6 @@ const BoxesFruit = ({
     );
 
 
-  const reveal =
-    spring({
-      frame,
-      fps,
-
-      config: {
-        damping:
-          15,
-
-        stiffness:
-          105,
-      },
-    });
-
-
   const focusIndex =
     Math.min(
       2,
@@ -1448,38 +2169,29 @@ const BoxesFruit = ({
     );
 
 
-  const boxes = [
+  const items = [
     {
-      title:
+      label:
         'MANZANAS',
 
-      icon:
-        '🍎',
-
-      accent:
-        COLORS.red,
+      fruitType:
+        'apple',
     },
 
     {
-      title:
+      label:
         'NARANJAS',
 
-      icon:
-        '🍊',
-
-      accent:
-        COLORS.amber,
+      fruitType:
+        'orange',
     },
 
     {
-      title:
+      label:
         'MEZCLA',
 
-      icon:
-        '🍎 🍊',
-
-      accent:
-        COLORS.cyan,
+      fruitType:
+        'mixed',
     },
   ];
 
@@ -1496,15 +2208,15 @@ const BoxesFruit = ({
       <BaseBackground />
 
       <Grid
-        opacity={0.04}
+        opacity={0.035}
       />
 
       <AmbientGlow
-        left="52%"
+        left="50%"
         top="52%"
         size={1250}
         color="109,124,255"
-        opacity={0.15}
+        opacity={0.14}
       />
 
 
@@ -1542,8 +2254,8 @@ const BoxesFruit = ({
       >
 
         <HeroTitle
-          size={59}
-          width={1300}
+          size={58}
+          width={1400}
         >
           {
             getHeadline(
@@ -1561,38 +2273,33 @@ const BoxesFruit = ({
           position:
             'absolute',
 
+          top:
+            340,
+
           left:
-            90,
+            0,
 
           right:
-            90,
-
-          top:
-            345,
+            0,
 
           display:
             'flex',
 
-          gap:
-            52,
-
           justifyContent:
             'center',
+
+          gap:
+            60,
         }}
       >
 
-        {boxes.map(
+        {items.map(
           (
-            box,
+            item,
             index
           ) => {
 
-            const active =
-              index ===
-              focusIndex;
-
-
-            const local =
+            const entrance =
               spring({
                 frame:
                   Math.max(
@@ -1608,129 +2315,46 @@ const BoxesFruit = ({
                     15,
 
                   stiffness:
-                    110,
+                    105,
                 },
               });
 
 
             return (
 
-              <GlassPanel
+              <CardboardBox
                 key={
-                  box.title
+                  item.label
                 }
 
-                style={{
-                  width:
-                    430,
+                label={
+                  item.label
+                }
 
-                  height:
-                    390,
+                fruitType={
+                  item.fruitType
+                }
 
-                  padding:
-                    32,
+                active={
+                  index ===
+                  focusIndex
+                }
 
-                  opacity:
-                    local,
+                entrance={
+                  entrance
+                }
 
-                  transform:
-                    `translateY(${(1 - local) * 40}px) scale(${active ? 1.055 : 1})`,
+                errorProgress={
+                  1
+                }
 
-                  border:
-                    active
-                      ? `2px solid ${box.accent}`
-                      : `1px solid ${COLORS.border}`,
-
-                  boxShadow:
-                    active
-                      ? `0 25px 100px ${box.accent}30`
-                      : '0 28px 90px rgba(0,0,0,.30)',
-                }}
-              >
-
-                <div
-                  style={{
-                    textAlign:
-                      'center',
-
-                    fontSize:
-                      95,
-
-                    marginTop:
-                      15,
-                  }}
-                >
-                  {box.icon}
-                </div>
-
-
-                <div
-                  style={{
-                    marginTop:
-                      38,
-
-                    padding:
-                      '18px 16px',
-
-                    borderRadius:
-                      14,
-
-                    textAlign:
-                      'center',
-
-                    color:
-                      '#fff',
-
-                    fontFamily:
-                      FONT,
-
-                    fontSize:
-                      27,
-
-                    fontWeight:
-                      900,
-
-                    background:
-                      `${box.accent}16`,
-
-                    border:
-                      `1px solid ${box.accent}55`,
-                  }}
-                >
-
-                  {box.title}
-
-                </div>
-
-
-                <div
-                  style={{
-                    marginTop:
-                      23,
-
-                    textAlign:
-                      'center',
-
-                    color:
-                      COLORS.red,
-
-                    fontFamily:
-                      FONT,
-
-                    fontWeight:
-                      900,
-
-                    fontSize:
-                      24,
-
-                    opacity:
-                      reveal,
-                  }}
-                >
-                  ETIQUETA INCORRECTA
-                </div>
-
-              </GlassPanel>
+                scale={
+                  index ===
+                    focusIndex
+                    ? 1.045
+                    : 1
+                }
+              />
 
             );
           }
@@ -1758,12 +2382,6 @@ const LogicReasoning = ({
 
   const frame =
     useCurrentFrame();
-
-
-  const {
-    fps,
-  } =
-    useVideoConfig();
 
 
   const duration =
@@ -1801,7 +2419,7 @@ const LogicReasoning = ({
         'Deducción',
 
       text:
-        'Una sola extracción revela información suficiente.',
+        'Una extracción elimina varias posibilidades.',
     },
 
     {
@@ -1812,7 +2430,7 @@ const LogicReasoning = ({
         'Resultado',
 
       text:
-        'El resto se deduce eliminando posibilidades.',
+        'El resto se resuelve por descarte lógico.',
     },
   ];
 
@@ -1886,7 +2504,7 @@ const LogicReasoning = ({
             getHeadline(
               shot
             ) ||
-            'La clave es reducir las posibilidades'
+            'La clave es reducir posibilidades'
           }
         </HeroTitle>
 
@@ -1914,7 +2532,7 @@ const LogicReasoning = ({
             'space-between',
 
           gap:
-            45,
+            42,
         }}
       >
 
@@ -1977,7 +2595,8 @@ const LogicReasoning = ({
 
                   <Badge
                     color={
-                      index === 2
+                      index ===
+                        2
                         ? COLORS.green
                         : COLORS.cyan
                     }
@@ -2454,9 +3073,11 @@ const ComparisonBoard = ({
             70,
         }}
       >
+
         <SectionLabel>
           COMPARACIÓN
         </SectionLabel>
+
       </div>
 
 
@@ -2578,9 +3199,9 @@ const ComparisonBoard = ({
                 1.45,
             }}
           >
-            Puede acertar la respuesta,
-            pero no explicar con claridad
-            cómo llegó hasta ella.
+            Puede acertar,
+            pero no siempre explica
+            cómo llegó hasta la respuesta.
           </div>
 
         </GlassPanel>
@@ -3045,7 +3666,7 @@ const ShotRenderer = ({
 
 
   // ====================================================
-  // V5 TEMPLATE ROUTER
+  // TEMPLATE ROUTER
   // ====================================================
 
   switch (
@@ -3106,9 +3727,7 @@ const ShotRenderer = ({
       );
 
 
-    // --------------------------------------------------
-    // ALIASES LEGACY
-    // --------------------------------------------------
+    // LEGACY ALIASES
 
     case 'hook_transformation':
 
@@ -3188,7 +3807,7 @@ const ShotRenderer = ({
 
 
   // ====================================================
-  // V5 LAYOUT ROUTER
+  // LAYOUT ROUTER
   // ====================================================
 
   switch (
@@ -3241,73 +3860,6 @@ const ShotRenderer = ({
 
 
     case 'cta_endcard':
-
-      return (
-        <CTAEndcard
-          shot={shot}
-        />
-      );
-
-
-    // --------------------------------------------------
-    // LEGACY LAYOUT ALIASES
-    // --------------------------------------------------
-
-    case 'dynamic_problem_solution':
-
-      return (
-        <LogicHookStage
-          shot={shot}
-        />
-      );
-
-
-    case 'stock_background_with_ui_overlay':
-
-      return (
-        <UIExplainer
-          shot={shot}
-        />
-      );
-
-
-    case 'split_context_and_output':
-
-      return (
-        <LogicReasoning
-          shot={shot}
-        />
-      );
-
-
-    case 'full_ui_with_detail_zoom':
-
-      return (
-        <UIExplainer
-          shot={shot}
-        />
-      );
-
-
-    case 'split_screen_50_50':
-
-      return (
-        <ComparisonBoard
-          shot={shot}
-        />
-      );
-
-
-    case 'test_review_improve':
-
-      return (
-        <ComparisonBoard
-          shot={shot}
-        />
-      );
-
-
-    case 'centered_cta_with_background':
 
       return (
         <CTAEndcard
