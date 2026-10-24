@@ -17,9 +17,9 @@ import {
 //
 // Compatible con:
 // - Composition ID: YouTubeV4
-// - Endpoint actual: /render-v4
+// - Endpoint: /render-v4
 //
-// Familias soportadas:
+// Familias:
 // - logic_hook
 // - boxes_fruit
 // - logic_reasoning
@@ -27,13 +27,12 @@ import {
 // - comparison
 // - cta
 //
-// V5.3:
-// - frutas SVG internas
-// - cajas 3D estilizadas
-// - mejor profundidad
-// - mejor textura
-// - timing del hook refinado
-// - payoff final más limpio
+// V5.4
+// - payoff final limpio
+// - cajas desaparecen antes de la pregunta
+// - mensaje rojo desaparece antes
+// - frutas SVG
+// - cajas 3D
 // ======================================================
 
 
@@ -674,7 +673,6 @@ const CinematicVideo = ({
 
 
   if (!src) {
-
     return null;
   }
 
@@ -776,7 +774,7 @@ const CinematicVideo = ({
 
 
 // ======================================================
-// SVG FRUIT ICONS
+// SVG APPLE
 // ======================================================
 
 const AppleIcon = ({
@@ -865,6 +863,10 @@ const AppleIcon = ({
 
 );
 
+
+// ======================================================
+// SVG ORANGE
+// ======================================================
 
 const OrangeIcon = ({
   size = 82,
@@ -1016,7 +1018,7 @@ const FruitDisplay = ({
 
 
 // ======================================================
-// PREMIUM CARDBOARD BOX
+// CARDBOARD BOX
 // ======================================================
 
 const CardboardBox = ({
@@ -1069,8 +1071,6 @@ const CardboardBox = ({
       }}
     >
 
-      {/* SHADOW */}
-
       <div
         style={{
           position:
@@ -1102,8 +1102,6 @@ const CardboardBox = ({
         }}
       />
 
-
-      {/* BOX BODY */}
 
       <div
         style={{
@@ -1151,8 +1149,6 @@ const CardboardBox = ({
         }}
       >
 
-        {/* CARDBOARD TEXTURE */}
-
         <div
           style={{
             position:
@@ -1170,8 +1166,6 @@ const CardboardBox = ({
         />
 
 
-        {/* SECONDARY TEXTURE */}
-
         <div
           style={{
             position:
@@ -1188,8 +1182,6 @@ const CardboardBox = ({
           }}
         />
 
-
-        {/* CENTER TAPE */}
 
         <div
           style={{
@@ -1219,8 +1211,6 @@ const CardboardBox = ({
           }}
         />
 
-
-        {/* FRUIT */}
 
         <div
           style={{
@@ -1262,8 +1252,6 @@ const CardboardBox = ({
 
         </div>
 
-
-        {/* LABEL */}
 
         <div
           style={{
@@ -1319,8 +1307,6 @@ const CardboardBox = ({
           {label}
         </div>
 
-
-        {/* INCORRECT MARK */}
 
         <div
           style={{
@@ -1384,8 +1370,6 @@ const CardboardBox = ({
 
       </div>
 
-
-      {/* TOP FLAPS */}
 
       <div
         style={{
@@ -1476,7 +1460,7 @@ const CardboardBox = ({
 
 
 // ======================================================
-// LOGIC HOOK - CINEMATIC V5.3
+// LOGIC HOOK V5.4
 // ======================================================
 
 const LogicHookStage = ({
@@ -1530,7 +1514,7 @@ const LogicHookStage = ({
 
 
   // ====================================================
-  // INTRO
+  // HEADLINE
   // ====================================================
 
   const headlineOpacity =
@@ -1548,14 +1532,6 @@ const LogicHookStage = ({
     );
 
 
-  const cameraScale =
-    interpolate(
-      progress,
-      [0, 1],
-      [1, 1.075]
-    );
-
-
   // ====================================================
   // BOX ENTRANCE
   // ====================================================
@@ -1565,21 +1541,15 @@ const LogicHookStage = ({
       frame:
         Math.max(
           0,
-          frame -
-          1
+          frame - 1
         ),
 
       fps,
 
       config: {
-        damping:
-          14,
-
-        stiffness:
-          120,
-
-        mass:
-          0.8,
+        damping: 14,
+        stiffness: 120,
+        mass: 0.8,
       },
     });
 
@@ -1589,21 +1559,15 @@ const LogicHookStage = ({
       frame:
         Math.max(
           0,
-          frame -
-          3
+          frame - 3
         ),
 
       fps,
 
       config: {
-        damping:
-          14,
-
-        stiffness:
-          120,
-
-        mass:
-          0.8,
+        damping: 14,
+        stiffness: 120,
+        mass: 0.8,
       },
     });
 
@@ -1613,27 +1577,21 @@ const LogicHookStage = ({
       frame:
         Math.max(
           0,
-          frame -
-          5
+          frame - 5
         ),
 
       fps,
 
       config: {
-        damping:
-          14,
-
-        stiffness:
-          120,
-
-        mass:
-          0.8,
+        damping: 14,
+        stiffness: 120,
+        mass: 0.8,
       },
     });
 
 
   // ====================================================
-  // SEQUENTIAL ERROR MARKS
+  // ERROR MARKS
   // ====================================================
 
   const error1 =
@@ -1683,26 +1641,28 @@ const LogicHookStage = ({
 
   // ====================================================
   // WRONG MESSAGE
+  //
+  // Ahora desaparece ANTES de que entre la pregunta.
   // ====================================================
 
   const wrongMessage =
     fadeInOut(
       progress,
-      0.43,
-      0.52,
-      0.67,
-      0.75
+      0.41,
+      0.49,
+      0.60,
+      0.68
     );
 
 
   // ====================================================
-  // QUESTION PAYOFF
+  // QUESTION
   // ====================================================
 
   const questionProgress =
     interpolate(
       progress,
-      [0.69, 0.80],
+      [0.68, 0.79],
       [0, 1],
       {
         extrapolateLeft:
@@ -1713,6 +1673,66 @@ const LogicHookStage = ({
       }
     );
 
+
+  // ====================================================
+  // FADE OUT DEL CONTENIDO ANTERIOR
+  //
+  // 0.62 -> empieza a desaparecer
+  // 0.73 -> prácticamente invisible
+  // ====================================================
+
+  const preQuestionOpacity =
+    interpolate(
+      progress,
+      [0.61, 0.73],
+      [1, 0],
+      {
+        extrapolateLeft:
+          'clamp',
+
+        extrapolateRight:
+          'clamp',
+      }
+    );
+
+
+  // ====================================================
+  // MOVIMIENTO DE LAS CAJAS HACIA ABAJO
+  // ====================================================
+
+  const boxesExitY =
+    interpolate(
+      progress,
+      [0.61, 0.73],
+      [0, 65],
+      {
+        extrapolateLeft:
+          'clamp',
+
+        extrapolateRight:
+          'clamp',
+      }
+    );
+
+
+  const boxesExitScale =
+    interpolate(
+      progress,
+      [0.61, 0.73],
+      [1, 0.95],
+      {
+        extrapolateLeft:
+          'clamp',
+
+        extrapolateRight:
+          'clamp',
+      }
+    );
+
+
+  // ====================================================
+  // QUESTION PUNCH
+  // ====================================================
 
   const questionPunch =
     spring({
@@ -1722,76 +1742,29 @@ const LogicHookStage = ({
           frame -
           Math.round(
             duration *
-            0.70
+            0.68
           )
         ),
 
       fps,
 
       config: {
-        damping:
-          12,
-
-        stiffness:
-          135,
-
-        mass:
-          0.72,
+        damping: 12,
+        stiffness: 135,
+        mass: 0.72,
       },
     });
 
 
-  const boxes =
-    [
-      {
-        label:
-          'MANZANAS',
+  // ====================================================
+  // CAMERA
+  // ====================================================
 
-        fruitType:
-          'apple',
-
-        entrance:
-          box1,
-
-        error:
-          error1,
-      },
-
-      {
-        label:
-          'NARANJAS',
-
-        fruitType:
-          'orange',
-
-        entrance:
-          box2,
-
-        error:
-          error2,
-      },
-
-      {
-        label:
-          'MEZCLA',
-
-        fruitType:
-          'mixed',
-
-        entrance:
-          box3,
-
-        error:
-          error3,
-      },
-    ];
-
-
-  const boxesShiftY =
+  const cameraScale =
     interpolate(
-      questionProgress,
-      [0, 1],
-      [0, 38],
+      progress,
+      [0, 0.61],
+      [1, 1.065],
       {
         extrapolateLeft:
           'clamp',
@@ -1800,6 +1773,51 @@ const LogicHookStage = ({
           'clamp',
       }
     );
+
+
+  const boxes = [
+    {
+      label:
+        'MANZANAS',
+
+      fruitType:
+        'apple',
+
+      entrance:
+        box1,
+
+      error:
+        error1,
+    },
+
+    {
+      label:
+        'NARANJAS',
+
+      fruitType:
+        'orange',
+
+      entrance:
+        box2,
+
+      error:
+        error2,
+    },
+
+    {
+      label:
+        'MEZCLA',
+
+      fruitType:
+        'mixed',
+
+      entrance:
+        box3,
+
+      error:
+        error3,
+    },
+  ];
 
 
   return (
@@ -1837,10 +1855,17 @@ const LogicHookStage = ({
       />
 
 
+      {/* =================================================
+          PRE-QUESTION CONTENT
+          ================================================= */}
+
       <AbsoluteFill
         style={{
+          opacity:
+            preQuestionOpacity,
+
           transform:
-            `scale(${cameraScale}) translateY(${boxesShiftY}px)`,
+            `scale(${cameraScale})`,
         }}
       >
 
@@ -1882,7 +1907,7 @@ const LogicHookStage = ({
         </div>
 
 
-        {/* MAIN TITLE */}
+        {/* TITLE */}
 
         <div
           style={{
@@ -1944,6 +1969,9 @@ const LogicHookStage = ({
 
             gap:
               58,
+
+            transform:
+              `translateY(${boxesExitY}px) scale(${boxesExitScale})`,
           }}
         >
 
@@ -2053,7 +2081,27 @@ const LogicHookStage = ({
       </AbsoluteFill>
 
 
-      {/* QUESTION PAYOFF */}
+      {/* =================================================
+          QUESTION BACKDROP
+          ================================================= */}
+
+      <AbsoluteFill
+        style={{
+          opacity:
+            questionProgress,
+
+          background:
+            `rgba(3,5,10,${questionProgress * 0.94})`,
+
+          backdropFilter:
+            `blur(${questionProgress * 8}px)`,
+        }}
+      />
+
+
+      {/* =================================================
+          QUESTION PAYOFF
+          ================================================= */}
 
       <AbsoluteFill
         style={{
@@ -2065,28 +2113,29 @@ const LogicHookStage = ({
 
           opacity:
             questionProgress,
-
-          background:
-            `rgba(4,7,12,${questionProgress * 0.88})`,
         }}
       >
 
         <GlassPanel
           style={{
             padding:
-              '44px 78px',
+              '46px 82px',
 
             transform:
-              `scale(${0.86 + questionPunch * 0.14})`,
+              `translateY(${(1 - questionPunch) * 22}px) scale(${0.84 + questionPunch * 0.16})`,
 
             textAlign:
               'center',
 
             border:
-              '1px solid rgba(41,211,255,.32)',
+              '1px solid rgba(41,211,255,.35)',
+
+            background:
+              'linear-gradient(145deg,rgba(11,18,30,.96),rgba(5,9,16,.96))',
 
             boxShadow:
-              '0 45px 145px rgba(0,0,0,.70)',
+              `0 48px 155px rgba(0,0,0,.78),
+               0 0 75px rgba(41,211,255,.10)`,
           }}
         >
 
@@ -2102,13 +2151,13 @@ const LogicHookStage = ({
           <div
             style={{
               marginTop:
-                28,
+                29,
 
               fontFamily:
                 FONT,
 
               fontSize:
-                74,
+                76,
 
               fontWeight:
                 950,
@@ -2117,14 +2166,40 @@ const LogicHookStage = ({
                 '#fff',
 
               letterSpacing:
-                -2.2,
+                -2.4,
 
               textShadow:
-                '0 18px 48px rgba(0,0,0,.55)',
+                '0 20px 52px rgba(0,0,0,.60)',
             }}
           >
             {title3}
           </div>
+
+
+          <div
+            style={{
+              margin:
+                '25px auto 0',
+
+              width:
+                115,
+
+              height:
+                4,
+
+              borderRadius:
+                999,
+
+              background:
+                COLORS.cyan,
+
+              boxShadow:
+                '0 0 24px rgba(41,211,255,.75)',
+
+              transform:
+                `scaleX(${questionPunch})`,
+            }}
+          />
 
         </GlassPanel>
 
@@ -2136,9 +2211,9 @@ const LogicHookStage = ({
           clamp(
             (
               progress -
-              0.16
+              0.15
             ) /
-            0.52,
+            0.50,
             0,
             1
           )
@@ -2146,13 +2221,13 @@ const LogicHookStage = ({
 
         opacity={
           wrongMessage *
-          0.55
+          0.50
         }
       />
 
 
       <Vignette
-        opacity={0.30}
+        opacity={0.32}
       />
 
     </AbsoluteFill>
@@ -2345,11 +2420,8 @@ const BoxesFruit = ({
                 fps,
 
                 config: {
-                  damping:
-                    15,
-
-                  stiffness:
-                    105,
+                  damping: 15,
+                  stiffness: 105,
                 },
               });
 
@@ -2747,14 +2819,12 @@ const UIExplainer = ({
   const enter =
     spring({
       frame,
+
       fps,
 
       config: {
-        damping:
-          16,
-
-        stiffness:
-          105,
+        damping: 16,
+        stiffness: 105,
       },
     });
 
@@ -3067,14 +3137,12 @@ const ComparisonBoard = ({
   const reveal =
     spring({
       frame,
+
       fps,
 
       config: {
-        damping:
-          15,
-
-        stiffness:
-          100,
+        damping: 15,
+        stiffness: 100,
       },
     });
 
@@ -3349,11 +3417,8 @@ const CTAEndcard = ({
       fps,
 
       config: {
-        damping:
-          14,
-
-        stiffness:
-          100,
+        damping: 14,
+        stiffness: 100,
       },
     });
 
@@ -3552,11 +3617,8 @@ const GenericVisual = ({
       fps,
 
       config: {
-        damping:
-          16,
-
-        stiffness:
-          100,
+        damping: 16,
+        stiffness: 100,
       },
     });
 
@@ -3699,10 +3761,6 @@ const ShotRenderer = ({
     );
 
 
-  // ====================================================
-  // TEMPLATE ROUTER
-  // ====================================================
-
   switch (
     template
   ) {
@@ -3761,9 +3819,7 @@ const ShotRenderer = ({
       );
 
 
-    // ==================================================
-    // LEGACY ALIASES
-    // ==================================================
+    // LEGACY
 
     case 'hook_transformation':
 
@@ -3841,10 +3897,6 @@ const ShotRenderer = ({
       break;
   }
 
-
-  // ====================================================
-  // LAYOUT ROUTER
-  // ====================================================
 
   switch (
     layout
