@@ -27,12 +27,13 @@ import {
 // - comparison
 // - cta
 //
-// V5.2:
+// V5.3:
 // - frutas SVG internas
 // - cajas 3D estilizadas
-// - etiquetas premium
-// - animación secuencial de errores
-// - mejor timing cinematográfico
+// - mejor profundidad
+// - mejor textura
+// - timing del hook refinado
+// - payoff final más limpio
 // ======================================================
 
 
@@ -796,6 +797,7 @@ const AppleIcon = ({
         cy="30%"
         r="80%"
       >
+
         <stop
           offset="0%"
           stopColor="#ff7b82"
@@ -810,6 +812,7 @@ const AppleIcon = ({
           offset="100%"
           stopColor="#a91f2c"
         />
+
       </radialGradient>
 
     </defs>
@@ -881,6 +884,7 @@ const OrangeIcon = ({
         cy="30%"
         r="75%"
       >
+
         <stop
           offset="0%"
           stopColor="#ffc05b"
@@ -895,6 +899,7 @@ const OrangeIcon = ({
           offset="100%"
           stopColor="#cf6210"
         />
+
       </radialGradient>
 
     </defs>
@@ -1026,12 +1031,11 @@ const CardboardBox = ({
   entrance = 1,
 
   scale = 1,
-
-  index = 0,
 }) => {
 
   const accent =
-    fruitType === 'apple'
+    fruitType ===
+      'apple'
       ? COLORS.red
 
       : fruitType ===
@@ -1058,7 +1062,7 @@ const CardboardBox = ({
           entrance,
 
         transform:
-          `translateY(${(1 - entrance) * 60}px) scale(${entrance * scale}) perspective(900px) rotateX(-2deg)`,
+          `translateY(${(1 - entrance) * 56}px) scale(${entrance * scale}) perspective(900px) rotateX(-2deg)`,
 
         transformOrigin:
           'center bottom',
@@ -1073,28 +1077,28 @@ const CardboardBox = ({
             'absolute',
 
           left:
-            40,
+            35,
 
           right:
-            40,
+            35,
 
           bottom:
-            -22,
+            -24,
 
           height:
-            45,
+            48,
 
           borderRadius:
             '50%',
 
           background:
-            'rgba(0,0,0,.48)',
+            'rgba(0,0,0,.56)',
 
           filter:
-            'blur(18px)',
+            'blur(19px)',
 
           opacity:
-            0.75,
+            0.82,
         }}
       />
 
@@ -1136,9 +1140,11 @@ const CardboardBox = ({
 
           boxShadow:
             active
-              ? `0 35px 100px rgba(0,0,0,.48),
-                 0 0 55px ${accent}35`
-              : '0 35px 100px rgba(0,0,0,.48)',
+              ? `0 38px 105px rgba(0,0,0,.56),
+                 0 0 60px ${accent}38,
+                 inset 0 1px 0 rgba(255,255,255,.12)`
+              : `0 38px 105px rgba(0,0,0,.56),
+                 inset 0 1px 0 rgba(255,255,255,.10)`,
 
           overflow:
             'hidden',
@@ -1156,10 +1162,29 @@ const CardboardBox = ({
               0,
 
             opacity:
-              0.14,
+              0.21,
 
             backgroundImage:
               'repeating-linear-gradient(0deg,rgba(255,255,255,.09) 0px,rgba(255,255,255,.09) 1px,transparent 1px,transparent 5px)',
+          }}
+        />
+
+
+        {/* SECONDARY TEXTURE */}
+
+        <div
+          style={{
+            position:
+              'absolute',
+
+            inset:
+              0,
+
+            opacity:
+              0.09,
+
+            backgroundImage:
+              'repeating-linear-gradient(90deg,rgba(80,40,15,.18) 0px,rgba(80,40,15,.18) 1px,transparent 1px,transparent 9px)',
           }}
         />
 
@@ -1184,7 +1209,13 @@ const CardboardBox = ({
               '6%',
 
             background:
-              'rgba(255,223,170,.14)',
+              'rgba(255,223,170,.15)',
+
+            borderLeft:
+              '1px solid rgba(255,255,255,.08)',
+
+            borderRight:
+              '1px solid rgba(0,0,0,.08)',
           }}
         />
 
@@ -1255,13 +1286,13 @@ const CardboardBox = ({
               10,
 
             background:
-              '#f4e8cf',
+              'linear-gradient(180deg,#f7edd9,#ead9b8)',
 
             border:
-              '1px solid rgba(76,50,28,.35)',
+              '1px solid rgba(76,50,28,.40)',
 
             boxShadow:
-              '0 7px 18px rgba(0,0,0,.24)',
+              '0 8px 20px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.65)',
 
             textAlign:
               'center',
@@ -1321,7 +1352,7 @@ const CardboardBox = ({
               'center',
 
             background:
-              'rgba(255,255,255,.92)',
+              'rgba(255,255,255,.94)',
 
             border:
               `3px solid ${COLORS.red}`,
@@ -1393,7 +1424,7 @@ const CardboardBox = ({
             '1px solid rgba(255,255,255,.10)',
 
           boxShadow:
-            '0 8px 20px rgba(0,0,0,.16)',
+            '0 10px 24px rgba(0,0,0,.20)',
         }}
       />
 
@@ -1435,7 +1466,7 @@ const CardboardBox = ({
             '1px solid rgba(255,255,255,.10)',
 
           boxShadow:
-            '0 8px 20px rgba(0,0,0,.16)',
+            '0 10px 24px rgba(0,0,0,.20)',
         }}
       />
 
@@ -1445,7 +1476,7 @@ const CardboardBox = ({
 
 
 // ======================================================
-// LOGIC HOOK - CINEMATIC V5.2
+// LOGIC HOOK - CINEMATIC V5.3
 // ======================================================
 
 const LogicHookStage = ({
@@ -1505,7 +1536,7 @@ const LogicHookStage = ({
   const headlineOpacity =
     interpolate(
       progress,
-      [0, 0.10],
+      [0, 0.08],
       [0, 1],
       {
         extrapolateLeft:
@@ -1521,7 +1552,7 @@ const LogicHookStage = ({
     interpolate(
       progress,
       [0, 1],
-      [1, 1.08]
+      [1, 1.075]
     );
 
 
@@ -1559,7 +1590,7 @@ const LogicHookStage = ({
         Math.max(
           0,
           frame -
-          5
+          3
         ),
 
       fps,
@@ -1583,7 +1614,7 @@ const LogicHookStage = ({
         Math.max(
           0,
           frame -
-          9
+          5
         ),
 
       fps,
@@ -1608,7 +1639,7 @@ const LogicHookStage = ({
   const error1 =
     interpolate(
       progress,
-      [0.34, 0.43],
+      [0.30, 0.38],
       [0, 1],
       {
         extrapolateLeft:
@@ -1623,7 +1654,7 @@ const LogicHookStage = ({
   const error2 =
     interpolate(
       progress,
-      [0.42, 0.51],
+      [0.37, 0.45],
       [0, 1],
       {
         extrapolateLeft:
@@ -1638,7 +1669,7 @@ const LogicHookStage = ({
   const error3 =
     interpolate(
       progress,
-      [0.50, 0.59],
+      [0.44, 0.52],
       [0, 1],
       {
         extrapolateLeft:
@@ -1657,21 +1688,21 @@ const LogicHookStage = ({
   const wrongMessage =
     fadeInOut(
       progress,
-      0.48,
-      0.58,
-      0.68,
-      0.76
+      0.43,
+      0.52,
+      0.67,
+      0.75
     );
 
 
   // ====================================================
-  // QUESTION
+  // QUESTION PAYOFF
   // ====================================================
 
   const questionProgress =
     interpolate(
       progress,
-      [0.71, 0.84],
+      [0.69, 0.80],
       [0, 1],
       {
         extrapolateLeft:
@@ -1691,7 +1722,7 @@ const LogicHookStage = ({
           frame -
           Math.round(
             duration *
-            0.72
+            0.70
           )
         ),
 
@@ -1756,6 +1787,21 @@ const LogicHookStage = ({
     ];
 
 
+  const boxesShiftY =
+    interpolate(
+      questionProgress,
+      [0, 1],
+      [0, 38],
+      {
+        extrapolateLeft:
+          'clamp',
+
+        extrapolateRight:
+          'clamp',
+      }
+    );
+
+
   return (
 
     <AbsoluteFill
@@ -1794,7 +1840,7 @@ const LogicHookStage = ({
       <AbsoluteFill
         style={{
           transform:
-            `scale(${cameraScale})`,
+            `scale(${cameraScale}) translateY(${boxesShiftY}px)`,
         }}
       >
 
@@ -1902,10 +1948,7 @@ const LogicHookStage = ({
         >
 
           {boxes.map(
-            (
-              box,
-              index
-            ) => (
+            box => (
 
               <CardboardBox
                 key={
@@ -1929,16 +1972,7 @@ const LogicHookStage = ({
                 }
 
                 scale={
-                  1 +
-                  (
-                    index === 1
-                      ? 0.006
-                      : 0
-                  )
-                }
-
-                index={
-                  index
+                  1
                 }
               />
 
@@ -1962,7 +1996,7 @@ const LogicHookStage = ({
               0,
 
             bottom:
-              100,
+              93,
 
             display:
               'flex',
@@ -1974,23 +2008,23 @@ const LogicHookStage = ({
               wrongMessage,
 
             transform:
-              `translateY(${(1 - wrongMessage) * 25}px) scale(${0.96 + wrongMessage * 0.04})`,
+              `translateY(${(1 - wrongMessage) * 22}px) scale(${0.96 + wrongMessage * 0.04})`,
           }}
         >
 
           <div
             style={{
               padding:
-                '18px 32px',
+                '19px 36px',
 
               borderRadius:
                 18,
 
               background:
-                'rgba(255,102,118,.10)',
+                'rgba(255,102,118,.11)',
 
               border:
-                '1px solid rgba(255,102,118,.42)',
+                '1px solid rgba(255,102,118,.48)',
 
               color:
                 COLORS.red,
@@ -1999,16 +2033,16 @@ const LogicHookStage = ({
                 FONT,
 
               fontSize:
-                41,
+                44,
 
               fontWeight:
                 950,
 
               letterSpacing:
-                -0.8,
+                -1,
 
               boxShadow:
-                '0 20px 70px rgba(0,0,0,.34)',
+                '0 22px 75px rgba(0,0,0,.38)',
             }}
           >
             {title2}
@@ -2033,14 +2067,14 @@ const LogicHookStage = ({
             questionProgress,
 
           background:
-            `rgba(4,7,12,${questionProgress * 0.76})`,
+            `rgba(4,7,12,${questionProgress * 0.88})`,
         }}
       >
 
         <GlassPanel
           style={{
             padding:
-              '42px 75px',
+              '44px 78px',
 
             transform:
               `scale(${0.86 + questionPunch * 0.14})`,
@@ -2049,10 +2083,10 @@ const LogicHookStage = ({
               'center',
 
             border:
-              '1px solid rgba(41,211,255,.26)',
+              '1px solid rgba(41,211,255,.32)',
 
             boxShadow:
-              '0 40px 130px rgba(0,0,0,.62)',
+              '0 45px 145px rgba(0,0,0,.70)',
           }}
         >
 
@@ -2068,13 +2102,13 @@ const LogicHookStage = ({
           <div
             style={{
               marginTop:
-                27,
+                28,
 
               fontFamily:
                 FONT,
 
               fontSize:
-                72,
+                74,
 
               fontWeight:
                 950,
@@ -2086,7 +2120,7 @@ const LogicHookStage = ({
                 -2.2,
 
               textShadow:
-                '0 18px 48px rgba(0,0,0,.5)',
+                '0 18px 48px rgba(0,0,0,.55)',
             }}
           >
             {title3}
@@ -2102,9 +2136,9 @@ const LogicHookStage = ({
           clamp(
             (
               progress -
-              0.18
+              0.16
             ) /
-            0.55,
+            0.52,
             0,
             1
           )
@@ -2118,7 +2152,7 @@ const LogicHookStage = ({
 
 
       <Vignette
-        opacity={0.28}
+        opacity={0.30}
       />
 
     </AbsoluteFill>
@@ -3727,7 +3761,9 @@ const ShotRenderer = ({
       );
 
 
+    // ==================================================
     // LEGACY ALIASES
+    // ==================================================
 
     case 'hook_transformation':
 
