@@ -4,6 +4,7 @@ import {
   Composition,
   Sequence,
   Video,
+  Img,
   interpolate,
   spring,
   useCurrentFrame,
@@ -380,6 +381,82 @@ const LogicHookStage = ({shot}) => {
   );
 };
 
+
+// ======================================================
+// V5.6 VISUAL PRIMITIVES — VISUAL FIRST
+// ======================================================
+
+const getImageUrl = (shot) => {
+  const candidates = [
+    shot?.imageUrl,
+    shot?.image?.url,
+    shot?.visual?.imageUrl,
+    shot?.visualAsset?.imageUrl,
+    shot?.visualAsset?.thumbnailUrl,
+    shot?.thumbnailUrl,
+    shot?.asset?.imageUrl,
+  ].filter(Boolean);
+  return candidates[0] || null;
+};
+
+const VisualIcon = ({type = 'ai', size = 120, color = COLORS.cyan}) => {
+  const common = {fill: 'none', stroke: color, strokeWidth: 5, strokeLinecap: 'round', strokeLinejoin: 'round'};
+  return (
+    <svg width={size} height={size} viewBox="0 0 120 120">
+      <circle cx="60" cy="60" r="52" fill={`${color}12`} stroke={`${color}55`} strokeWidth="2" />
+      {type === 'shield' && <><path {...common} d="M60 20 L91 32 V55 C91 78 76 96 60 103 C44 96 29 78 29 55 V32 Z"/><path {...common} d="M45 60 L56 71 L78 46"/></>}
+      {type === 'chart' && <><path {...common} d="M29 88 V35 M29 88 H94"/><path {...common} d="M38 76 L52 62 L65 69 L83 43 L94 49"/><circle cx="52" cy="62" r="4" fill={color}/><circle cx="83" cy="43" r="4" fill={color}/></>}
+      {type === 'brain' && <><path {...common} d="M49 31 C34 24 25 37 31 50 C18 58 25 76 39 77 C39 92 55 98 60 85"/><path {...common} d="M71 31 C86 24 95 37 89 50 C102 58 95 76 81 77 C81 92 65 98 60 85"/><path {...common} d="M60 30 V87 M45 49 C52 48 57 53 60 59 M75 49 C68 48 63 53 60 59"/></>}
+      {type === 'network' && <><circle cx="60" cy="33" r="10" fill={`${color}22`} stroke={color} strokeWidth="3"/><circle cx="35" cy="78" r="10" fill={`${color}22`} stroke={color} strokeWidth="3"/><circle cx="85" cy="78" r="10" fill={`${color}22`} stroke={color} strokeWidth="3"/><path {...common} d="M55 42 L40 68 M65 42 L80 68 M45 78 H75"/></>}
+      {type === 'device' && <><rect x="27" y="23" width="66" height="73" rx="9" fill={`${color}0D`} stroke={color} strokeWidth="4"/><path {...common} d="M39 40 H80 M39 53 H72 M39 66 H84"/><circle cx="60" cy="84" r="4" fill={color}/></>}
+      {type === 'ai' && <><rect x="30" y="31" width="60" height="54" rx="15" fill={`${color}0D`} stroke={color} strokeWidth="4"/><circle cx="48" cy="56" r="5" fill={color}/><circle cx="72" cy="56" r="5" fill={color}/><path {...common} d="M47 70 Q60 78 73 70 M60 31 V20 M52 20 H68 M23 48 H30 M90 48 H97"/></>}
+    </svg>
+  );
+};
+
+const Sparkline = ({progress = 1, color = COLORS.cyan, width = 520, height = 180, variant = 0}) => {
+  const points = variant % 3 === 0
+    ? [[0,.78],[.12,.67],[.24,.72],[.36,.48],[.48,.55],[.61,.32],[.74,.40],[.87,.18],[1,.23]]
+    : variant % 3 === 1
+    ? [[0,.72],[.14,.55],[.28,.62],[.40,.38],[.52,.44],[.67,.25],[.82,.31],[1,.12]]
+    : [[0,.68],[.15,.74],[.28,.50],[.43,.54],[.58,.30],[.72,.36],[.86,.17],[1,.22]];
+  const shown = points.map(([x,y], i) => [x, y, clamp(progress * points.length - i, 0, 1)]);
+  const path = shown.map(([x,y,v], i) => `${i===0?'M':'L'} ${x*width} ${y*height + (1-v)*25}`).join(' ');
+  return <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+    {[.25,.5,.75].map((g)=><line key={g} x1="0" y1={g*height} x2={width} y2={g*height} stroke="rgba(255,255,255,.08)" strokeWidth="1"/>)}
+    <path d={path} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" filter="drop-shadow(0 0 10px rgba(41,211,255,.35))" />
+    {shown.map(([x,y,v],i)=><circle key={i} cx={x*width} cy={y*height+(1-v)*25} r={i===shown.length-1?7:4} fill={color} opacity={v}/>) }
+  </svg>;
+};
+
+const MiniBars = ({progress = 1, color = COLORS.purple, values = [.38,.64,.51,.82,.70,.93], width = 520, height = 240}) => (
+  <div style={{width, height, display:'flex', alignItems:'end', gap:18, padding:'0 10px 8px'}}>
+    {values.map((v,i)=>{
+      const q=clamp(progress*1.35-i*.08,0,1);
+      return <div key={i} style={{flex:1,height:`${Math.max(8,v*q*100)}%`,borderRadius:'12px 12px 4px 4px',background:`linear-gradient(180deg,${color},${color}55)`,boxShadow:q>.8?`0 0 28px ${color}44`:'none',position:'relative'}}><div style={{position:'absolute',top:-28,left:0,right:0,textAlign:'center',fontFamily:FONT,fontSize:16,fontWeight:900,color:COLORS.soft,opacity:q}}>{Math.round(v*100)}</div></div>;
+    })}
+  </div>
+);
+
+const DonutGauge = ({progress = 1, value = .82, color = COLORS.green, label = 'CALIDAD', size = 230}) => {
+  const r=82,c=2*Math.PI*r,dash=c*value*progress;
+  return <div style={{position:'relative',width:size,height:size}}><svg width={size} height={size} viewBox="0 0 230 230" style={{transform:'rotate(-90deg)'}}><circle cx="115" cy="115" r={r} fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="18"/><circle cx="115" cy="115" r={r} fill="none" stroke={color} strokeWidth="18" strokeLinecap="round" strokeDasharray={`${dash} ${c-dash}`} style={{filter:`drop-shadow(0 0 12px ${color}55)`}}/></svg><div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}><div style={{fontFamily:FONT,fontSize:42,fontWeight:950,color:'#fff'}}>{Math.round(value*progress*100)}%</div><div style={{fontFamily:FONT,fontSize:16,fontWeight:900,color:COLORS.muted,letterSpacing:1.6}}>{label}</div></div></div>;
+};
+
+const FlowDiagram = ({progress = 1, accent = COLORS.cyan, labels = ['INPUT','IA','VALIDACIÓN','OUTPUT']}) => (
+  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,width:'100%'}}>
+    {labels.map((label,i)=>{
+      const q=clamp(progress*1.35-i*.15,0,1);
+      return <React.Fragment key={label}><div style={{width:145,height:105,borderRadius:22,background:`linear-gradient(145deg,${accent}18,rgba(255,255,255,.03))`,border:`1px solid ${q>.7?accent:'rgba(255,255,255,.10)'}`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',opacity:.35+.65*q,transform:`scale(${.92+.08*q})`,boxShadow:q>.75?`0 0 34px ${accent}24`:'none'}}><VisualIcon type={i===0?'device':i===1?'brain':i===2?'shield':'chart'} size={48} color={accent}/><div style={{marginTop:8,fontFamily:FONT,fontSize:15,fontWeight:900,color:'#fff'}}>{label}</div></div>{i<labels.length-1&&<div style={{flex:1,height:3,background:'rgba(255,255,255,.08)',position:'relative',overflow:'hidden',borderRadius:99}}><div style={{position:'absolute',inset:0,width:`${clamp(progress*1.5-i*.18,0,1)*100}%`,background:accent,boxShadow:`0 0 18px ${accent}66`}}/></div>}</React.Fragment>;
+    })}
+  </div>
+);
+
+const BrowserMockup = ({shot, progress = 1, accent = COLORS.cyan}) => {
+  const imageUrl = getImageUrl(shot);
+  return <div style={{borderRadius:22,overflow:'hidden',background:'#0a101b',border:'1px solid rgba(255,255,255,.12)',boxShadow:'0 30px 90px rgba(0,0,0,.38)'}}><div style={{height:48,display:'flex',alignItems:'center',gap:8,padding:'0 18px',background:'rgba(255,255,255,.045)',borderBottom:'1px solid rgba(255,255,255,.08)'}}>{[COLORS.red,COLORS.amber,COLORS.green].map(c=><div key={c} style={{width:11,height:11,borderRadius:'50%',background:c}}/>)}<div style={{marginLeft:14,height:24,flex:1,borderRadius:8,background:'rgba(255,255,255,.05)'}}/></div><div style={{height:330,position:'relative',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>{imageUrl?<Img src={imageUrl} style={{width:'100%',height:'100%',objectFit:'cover',opacity:.9}}/>:<><div style={{position:'absolute',left:38,top:36,right:38,height:14,borderRadius:99,background:`linear-gradient(90deg,${accent},rgba(255,255,255,.08))`,transform:`scaleX(${.3+.7*progress})`,transformOrigin:'left'}}/><div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:18,width:'82%'}}>{['A','B','C'].map((x,i)=><div key={x} style={{height:150,borderRadius:18,background:'rgba(255,255,255,.035)',border:`1px solid ${i===Math.min(2,Math.floor(progress*3))?accent:'rgba(255,255,255,.08)'}`,display:'flex',alignItems:'center',justifyContent:'center'}}><VisualIcon type={i===0?'device':i===1?'brain':'chart'} size={78} color={accent}/></div>)}</div></>}</div></div>;
+};
+
 // ======================================================
 // UI EXPLAINER — 4 VARIANTES INTERNAS
 // ======================================================
@@ -389,334 +466,63 @@ const UIExplainer = ({shot}) => {
   const {fps} = useVideoConfig();
   const duration = getDurationFrames(shot);
   const p = clamp(frame / duration, 0, 1);
-  const title = shortText(getHeadline(shot), 64);
+  const title = shortText(getHeadline(shot), 68);
   const texts = getSupportingText(shot);
   const variant = hashString(shot?.shotId || title) % 4;
-  const enter = spring({frame, fps, config: {damping: 16, stiffness: 105}});
-  const active = Math.min(3, Math.floor(p * 4));
-  const items = [
-    shortText(texts[0] || 'Entrada o instrucción principal', 58),
-    shortText(texts[1] || 'La IA procesa el contexto', 58),
-    shortText(texts[2] || 'Se valida la respuesta', 58),
-    shortText(texts[3] || 'Resultado listo para usar', 58),
-  ];
+  const enter = spring({frame, fps, config:{damping:16,stiffness:105}});
+  const items = [shortText(texts[0]||'Entrada',48),shortText(texts[1]||'Procesamiento',48),shortText(texts[2]||'Validación',48),shortText(texts[3]||'Resultado',48)];
+  const active=Math.min(3,Math.floor(p*4));
+  return <AbsoluteFill style={{background:COLORS.bg,overflow:'hidden'}}>
+    <BaseBackground/><Grid opacity={.025}/><AmbientGlow left={variant%2?'28%':'73%'} top="47%" size={1200} color={variant>1?'168,121,255':'41,211,255'} opacity={.15}/>
+    <div style={{position:'absolute',left:80,top:62}}><SectionLabel>EXPLICACIÓN</SectionLabel></div>
+    <div style={{position:'absolute',left:80,top:125}}><HeroTitle size={54} width={1500}>{title}</HeroTitle></div>
 
-  return (
-    <AbsoluteFill style={{background: COLORS.bg, overflow: 'hidden'}}>
-      <BaseBackground />
-      <Grid opacity={.03} />
-      <AmbientGlow left={variant % 2 ? '25%' : '75%'} top="45%" size={1100} color={variant > 1 ? '168,121,255' : '41,211,255'} opacity={.14} />
+    {variant===0&&<><GlassPanel style={{position:'absolute',left:85,top:310,width:1080,height:555,padding:34,opacity:enter}}><Badge color={COLORS.purple}>FLUJO VISUAL</Badge><div style={{marginTop:42}}><FlowDiagram progress={p} accent={COLORS.cyan} labels={['ENTRADA','IA','QC','SALIDA']}/></div><div style={{marginTop:48,display:'grid',gridTemplateColumns:'1.3fr .7fr',gap:28}}><div><Sparkline progress={p} color={COLORS.cyan} width={620} height={185} variant={variant}/></div><div style={{display:'flex',alignItems:'center',justifyContent:'center'}}><DonutGauge progress={p} value={.88} color={COLORS.green} label="FIABILIDAD" size={200}/></div></div></GlassPanel><GlassPanel style={{position:'absolute',right:85,top:310,width:590,height:555,padding:32,opacity:enter}}><Badge color={COLORS.green}>PASO ACTIVO</Badge><div style={{marginTop:30,display:'flex',justifyContent:'center'}}><VisualIcon type={active===0?'device':active===1?'brain':active===2?'shield':'chart'} size={170} color={active===2?COLORS.amber:COLORS.green}/></div><div style={{marginTop:20,fontFamily:FONT,color:'#fff',fontSize:34,fontWeight:950,textAlign:'center'}}>{items[active]}</div><div style={{marginTop:34}}><ProgressBar progress={(p*4)%1} color={COLORS.green} width={500}/></div></GlassPanel></>}
 
-      <div style={{position: 'absolute', left: 80, top: 62}}><SectionLabel>EXPLICACIÓN</SectionLabel></div>
-      <div style={{position: 'absolute', left: 80, top: 125}}><HeroTitle size={54} width={1500}>{title}</HeroTitle></div>
+    {variant===1&&<><div style={{position:'absolute',left:95,top:320,width:940,opacity:enter}}><BrowserMockup shot={shot} progress={p} accent={COLORS.cyan}/></div><GlassPanel style={{position:'absolute',right:100,top:320,width:720,height:520,padding:38,opacity:interpolate(p,[.18,.38],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'})}}><Badge color={COLORS.green}>RESULTADO</Badge><div style={{marginTop:30,display:'flex',justifyContent:'space-between',alignItems:'center'}}><VisualIcon type="chart" size={135} color={COLORS.green}/><DonutGauge progress={p} value={.91} color={COLORS.green} label="ÉXITO" size={185}/></div><div style={{marginTop:28,fontFamily:FONT,color:'#fff',fontSize:34,fontWeight:900}}>{items[2]}</div><div style={{marginTop:16,fontFamily:FONT,color:COLORS.soft,fontSize:24,lineHeight:1.4}}>{items[3]}</div></GlassPanel></>}
 
-      {variant === 0 && (
-        <>
-          <GlassPanel style={{position: 'absolute', left: 90, top: 330, width: 740, height: 520, padding: 32, opacity: enter, transform: `translateX(${(1 - enter) * -55}px)`}}>
-            <Badge color={COLORS.purple}>WORKFLOW</Badge>
-            {items.map((t, i) => (
-              <div key={i} style={{marginTop: 24, display: 'flex', alignItems: 'center', gap: 18, opacity: interpolate(p, [i * .16, i * .16 + .12], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'})}}>
-                <div style={{width: 42, height: 42, borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', background: i <= active ? `${COLORS.cyan}22` : 'rgba(255,255,255,.05)', border: `1px solid ${i <= active ? COLORS.cyan : COLORS.border}`, color: '#fff', fontWeight: 900}}>{i + 1}</div>
-                <div style={{fontFamily: FONT, color: i === active ? '#fff' : COLORS.soft, fontSize: 25, fontWeight: i === active ? 800 : 600}}>{t}</div>
-              </div>
-            ))}
-          </GlassPanel>
-          <GlassPanel style={{position: 'absolute', right: 95, top: 310, width: 800, height: 555, padding: 34, opacity: enter, transform: `translateX(${(1 - enter) * 55}px)`}}>
-            <Badge color={COLORS.green}>RESULTADO EN VIVO</Badge>
-            <div style={{marginTop: 34, height: 315, borderRadius: 18, background: 'linear-gradient(145deg,rgba(25,214,163,.08),rgba(41,211,255,.04))', border: '1px solid rgba(41,211,255,.2)', padding: 28}}>
-              <div style={{height: 14, width: `${35 + p * 55}%`, borderRadius: 99, background: COLORS.cyan, opacity: .8}} />
-              <div style={{height: 14, width: `${55 + p * 25}%`, borderRadius: 99, background: 'rgba(255,255,255,.16)', marginTop: 24}} />
-              <div style={{height: 14, width: `${45 + p * 35}%`, borderRadius: 99, background: 'rgba(255,255,255,.12)', marginTop: 18}} />
-              <div style={{marginTop: 52, fontFamily: FONT, color: '#fff', fontSize: 34, fontWeight: 900}}>{items[active]}</div>
-            </div>
-            <div style={{marginTop: 30}}><ProgressBar progress={p} color={COLORS.green} width={680} /></div>
-          </GlassPanel>
-        </>
-      )}
+    {variant===2&&<><GlassPanel style={{position:'absolute',left:85,right:85,top:320,height:545,padding:36}}><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:38,height:'100%'}}><div><Badge color={COLORS.purple}>EVOLUCIÓN</Badge><div style={{marginTop:35}}><Sparkline progress={p} color={COLORS.purple} width={760} height={250} variant={2}/></div><div style={{display:'flex',gap:16,marginTop:24}}>{items.slice(0,3).map((x,i)=><div key={i} style={{flex:1,padding:'16px 18px',borderRadius:14,background:'rgba(255,255,255,.035)',border:`1px solid ${i===active?COLORS.purple:'rgba(255,255,255,.08)'}`,fontFamily:FONT,color:'#fff',fontSize:19,fontWeight:800,opacity:clamp(p*4-i,0,1)}}>{x}</div>)}</div></div><div><Badge color={COLORS.cyan}>DISTRIBUCIÓN</Badge><div style={{marginTop:36}}><MiniBars progress={p} color={COLORS.cyan} width={700} height={260}/></div><div style={{marginTop:18,display:'flex',justifyContent:'center'}}><VisualIcon type="network" size={120} color={COLORS.cyan}/></div></div></div></GlassPanel></>}
 
-      {variant === 1 && (
-        <>
-          <GlassPanel style={{position: 'absolute', left: 105, top: 325, width: 790, height: 520, overflow: 'hidden', opacity: enter}}>
-            <div style={{height: 55, background: 'rgba(255,255,255,.05)', borderBottom: '1px solid rgba(255,255,255,.08)', display: 'flex', alignItems: 'center', gap: 10, padding: '0 20px'}}>
-              {[0,1,2].map((x) => <div key={x} style={{width: 13, height: 13, borderRadius: '50%', background: x===0 ? COLORS.red : x===1 ? COLORS.amber : COLORS.green}} />)}
-            </div>
-            <div style={{padding: 30}}>
-              <Badge>ENTRADA</Badge>
-              <div style={{marginTop: 28, fontFamily: FONT, color: '#fff', fontSize: 31, fontWeight: 850}}>{items[0]}</div>
-              <div style={{marginTop: 26, color: COLORS.soft, fontFamily: FONT, fontSize: 24, lineHeight: 1.45}}>{items[1]}</div>
-              <div style={{marginTop: 36, padding: 20, borderRadius: 16, background: 'rgba(109,124,255,.10)', border: '1px solid rgba(109,124,255,.28)', transform: `scale(${.96 + .04 * Math.sin(frame / 11)})`}}>
-                <div style={{fontFamily: FONT, color: COLORS.cyan, fontSize: 21, fontWeight: 900}}>PROCESANDO</div>
-                <div style={{marginTop: 14}}><ProgressBar progress={p} /></div>
-              </div>
-            </div>
-          </GlassPanel>
-          <div style={{position: 'absolute', left: 930, top: 555, color: COLORS.cyan, fontSize: 65, fontWeight: 900, transform: `translateX(${Math.sin(frame / 8) * 8}px)`}}>→</div>
-          <GlassPanel style={{position: 'absolute', right: 105, top: 325, width: 720, height: 520, padding: 36, opacity: interpolate(p, [.25, .42], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'})}}>
-            <Badge color={COLORS.green}>SALIDA</Badge>
-            <div style={{marginTop: 34, fontFamily: FONT, color: '#fff', fontSize: 39, fontWeight: 900}}>{items[2]}</div>
-            <div style={{marginTop: 26, color: COLORS.soft, fontFamily: FONT, fontSize: 25, lineHeight: 1.45}}>{items[3]}</div>
-            <div style={{marginTop: 48, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18}}>
-              {['CLARO','VERIFICADO','ÚTIL','LISTO'].map((x, i) => <div key={x} style={{padding: 18, borderRadius: 14, textAlign: 'center', background: i <= active ? 'rgba(25,214,163,.10)' : 'rgba(255,255,255,.04)', border: `1px solid ${i <= active ? 'rgba(25,214,163,.38)' : 'rgba(255,255,255,.08)'}`, color: i <= active ? COLORS.green : COLORS.muted, fontFamily: FONT, fontWeight: 900}}>{x}</div>)}
-            </div>
-          </GlassPanel>
-        </>
-      )}
-
-      {variant === 2 && (
-        <>
-          <div style={{position: 'absolute', left: 120, right: 120, top: 455, height: 6, background: 'rgba(255,255,255,.08)', borderRadius: 99}}>
-            <div style={{height: '100%', width: `${p * 100}%`, background: `linear-gradient(90deg,${COLORS.purple},${COLORS.cyan})`, borderRadius: 99, boxShadow: '0 0 28px rgba(41,211,255,.35)'}} />
-          </div>
-          {items.map((t, i) => {
-            const x = 160 + i * 420;
-            const reveal = interpolate(p, [i * .16, i * .16 + .12], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
-            return <div key={i} style={{position: 'absolute', left: x, top: 395, width: 300, opacity: reveal, transform: `translateY(${(1 - reveal) * 30}px)`}}>
-              <div style={{width: 66, height: 66, margin: '0 auto', borderRadius: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', background: i === active ? `${COLORS.cyan}22` : 'rgba(255,255,255,.06)', border: `2px solid ${i === active ? COLORS.cyan : COLORS.border}`, color: '#fff', fontFamily: FONT, fontWeight: 950, fontSize: 26}}>{i + 1}</div>
-              <GlassPanel style={{marginTop: 38, padding: 24, minHeight: 180, textAlign: 'center', border: i === active ? '1px solid rgba(41,211,255,.38)' : COLORS.border}}>
-                <div style={{fontFamily: FONT, color: '#fff', fontSize: 25, fontWeight: 850, lineHeight: 1.25}}>{t}</div>
-              </GlassPanel>
-            </div>;
-          })}
-        </>
-      )}
-
-      {variant === 3 && (
-        <>
-          <div style={{position: 'absolute', left: 90, right: 90, top: 315, display: 'grid', gridTemplateColumns: '1.1fr .9fr', gap: 38}}>
-            <GlassPanel style={{height: 540, padding: 34, opacity: enter}}>
-              <Badge color={COLORS.blue}>PANEL DE CONTROL</Badge>
-              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 30}}>
-                {items.map((t, i) => {
-                  const q = interpolate(p, [i * .14, i * .14 + .14], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
-                  return <div key={i} style={{padding: 24, borderRadius: 18, minHeight: 180, background: i === active ? 'linear-gradient(145deg,rgba(109,124,255,.15),rgba(41,211,255,.08))' : 'rgba(255,255,255,.035)', border: `1px solid ${i === active ? 'rgba(41,211,255,.40)' : 'rgba(255,255,255,.08)'}`, opacity: q}}>
-                    <div style={{fontFamily: FONT, color: i === active ? COLORS.cyan : COLORS.muted, fontSize: 18, fontWeight: 900}}>0{i + 1}</div>
-                    <div style={{marginTop: 18, fontFamily: FONT, color: '#fff', fontSize: 25, fontWeight: 800, lineHeight: 1.3}}>{t}</div>
-                  </div>;
-                })}
-              </div>
-            </GlassPanel>
-            <GlassPanel style={{height: 540, padding: 38, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', opacity: enter}}>
-              <div><Badge color={COLORS.green}>ESTADO</Badge><div style={{marginTop: 28, fontFamily: FONT, color: '#fff', fontSize: 42, fontWeight: 950}}>Procesando correctamente</div></div>
-              <div>
-                <div style={{fontFamily: FONT, color: COLORS.soft, fontSize: 23}}>Progreso del paso actual</div>
-                <div style={{marginTop: 16}}><ProgressBar progress={(p * 4) % 1} color={COLORS.green} width={600} /></div>
-              </div>
-              <div style={{display: 'flex', gap: 14}}>{['INPUT','IA','QC','OUTPUT'].map((x, i) => <div key={x} style={{flex: 1, padding: '14px 10px', borderRadius: 12, textAlign: 'center', background: i <= active ? 'rgba(25,214,163,.12)' : 'rgba(255,255,255,.04)', border: `1px solid ${i <= active ? 'rgba(25,214,163,.40)' : 'rgba(255,255,255,.08)'}`, color: i <= active ? COLORS.green : COLORS.muted, fontFamily: FONT, fontWeight: 900}}>{x}</div>)}</div>
-            </GlassPanel>
-          </div>
-        </>
-      )}
-      <Vignette opacity={.25} />
-    </AbsoluteFill>
-  );
+    {variant===3&&<><GlassPanel style={{position:'absolute',left:85,top:315,width:1040,height:550,padding:34}}><Badge color={COLORS.blue}>PANEL VISUAL</Badge><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:28,marginTop:28}}><div style={{height:220,borderRadius:18,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.08)',padding:20}}><Sparkline progress={p} color={COLORS.cyan} width={450} height={170} variant={1}/></div><div style={{height:220,borderRadius:18,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',justifyContent:'space-evenly'}}><DonutGauge progress={p} value={.84} color={COLORS.green} label="CALIDAD" size={170}/><DonutGauge progress={p} value={.72} color={COLORS.amber} label="VELOCIDAD" size={170}/></div><div style={{gridColumn:'1 / span 2',height:190,borderRadius:18,background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.08)',padding:'18px 28px'}}><MiniBars progress={p} color={COLORS.purple} width={900} height={150} values={[.42,.63,.51,.78,.68,.91,.84]}/></div></div></GlassPanel><GlassPanel style={{position:'absolute',right:85,top:315,width:600,height:550,padding:34}}><Badge color={COLORS.green}>ESTADO</Badge><div style={{marginTop:30,display:'flex',justifyContent:'center'}}><VisualIcon type={active===1?'brain':active===2?'shield':'chart'} size={180} color={COLORS.green}/></div><div style={{marginTop:18,fontFamily:FONT,color:'#fff',fontSize:34,fontWeight:950,textAlign:'center'}}>{items[active]}</div><div style={{marginTop:34}}><ProgressBar progress={p} color={COLORS.green} width={510}/></div></GlassPanel></>}
+    <Vignette opacity={.24}/>
+  </AbsoluteFill>;
 };
-
-// ======================================================
-// LOGIC REASONING — PROGRESIÓN VISUAL REAL
-// ======================================================
 
 const LogicReasoning = ({shot}) => {
-  const frame = useCurrentFrame();
-  const duration = getDurationFrames(shot);
-  const p = clamp(frame / duration, 0, 1);
-  const title = shortText(getHeadline(shot), 70);
-  const raw = getSupportingText(shot);
-  const steps = [
-    shortText(raw[0] || 'Identifica la condición que sí conocemos.', 66),
-    shortText(raw[1] || 'Descarta las opciones incompatibles.', 66),
-    shortText(raw[2] || 'Comprueba la única alternativa consistente.', 66),
-  ];
-  const active = Math.min(2, Math.floor(p * 3));
-
-  return (
-    <AbsoluteFill style={{background: COLORS.bg}}>
-      <BaseBackground /><Grid opacity={.03} /><AmbientGlow left="68%" top="46%" size={1100} color="41,211,255" opacity={.14} />
-      <div style={{position: 'absolute', left: 80, top: 64}}><SectionLabel color={COLORS.green}>RAZONAMIENTO</SectionLabel></div>
-      <div style={{position: 'absolute', left: 80, top: 128}}><HeroTitle size={55} width={1500}>{title}</HeroTitle></div>
-
-      <div style={{position: 'absolute', left: 120, right: 120, top: 385, display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
-        {steps.map((step, i) => {
-          const reveal = interpolate(p, [i * .18, i * .18 + .12], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
-          const pulse = i === active ? 1 + Math.sin(frame / 8) * .025 : 1;
-          return <React.Fragment key={i}>
-            <GlassPanel style={{width: 430, height: 360, padding: 34, opacity: reveal, transform: `translateY(${(1 - reveal) * 36}px) scale(${pulse})`, border: i === active ? '1px solid rgba(41,211,255,.42)' : COLORS.border}}>
-              <Badge color={i === 2 ? COLORS.green : COLORS.cyan}>0{i + 1}</Badge>
-              <div style={{marginTop: 30, width: 90, height: 90, borderRadius: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', background: i === active ? 'rgba(41,211,255,.12)' : 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.10)', color: i === 2 ? COLORS.green : COLORS.cyan, fontSize: 48, fontWeight: 950}}>{i === 0 ? '?' : i === 1 ? '−' : '✓'}</div>
-              <div style={{marginTop: 28, fontFamily: FONT, color: '#fff', fontSize: 28, fontWeight: 900, lineHeight: 1.3}}>{step}</div>
-            </GlassPanel>
-            {i < 2 && <div style={{width: 120, height: 5, background: 'rgba(255,255,255,.08)', borderRadius: 99, overflow: 'hidden'}}><div style={{height: '100%', width: `${interpolate(p, [i * .28 + .18, i * .28 + .42], [0, 100], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'})}%`, background: COLORS.cyan}} /></div>}
-          </React.Fragment>;
-        })}
-      </div>
-      <Vignette opacity={.25} />
-    </AbsoluteFill>
-  );
+  const frame=useCurrentFrame(); const {fps}=useVideoConfig(); const duration=getDurationFrames(shot); const p=clamp(frame/duration,0,1);
+  const title=shortText(getHeadline(shot),68); const raw=getSupportingText(shot); const enter=spring({frame,fps,config:{damping:16,stiffness:105}});
+  const steps=[shortText(raw[0]||'Premisa',42),shortText(raw[1]||'Deducción',42),shortText(raw[2]||'Validación',42),shortText(raw[3]||'Conclusión',42)]; const active=Math.min(3,Math.floor(p*4));
+  return <AbsoluteFill style={{background:COLORS.bg,overflow:'hidden'}}><BaseBackground/><Grid opacity={.028}/><AmbientGlow left="68%" top="48%" size={1150} color="41,211,255" opacity={.13}/><div style={{position:'absolute',left:80,top:64}}><SectionLabel color={COLORS.green}>RAZONAMIENTO</SectionLabel></div><div style={{position:'absolute',left:80,top:128}}><HeroTitle size={55} width={1450}>{title}</HeroTitle></div>
+  <GlassPanel style={{position:'absolute',left:90,top:320,width:1220,height:545,padding:38,opacity:enter}}><Badge color={COLORS.green}>MAPA DE DECISIÓN</Badge><div style={{marginTop:38}}><FlowDiagram progress={p} accent={COLORS.green} labels={['PREMISA','DESCARTE','PRUEBA','CONCLUSIÓN']}/></div><div style={{position:'relative',height:245,marginTop:45}}><svg width="1140" height="240" viewBox="0 0 1140 240"><path d="M80 190 C220 60 330 60 455 150 S700 225 850 95 S1000 50 1080 78" fill="none" stroke="rgba(25,214,163,.15)" strokeWidth="18"/><path d="M80 190 C220 60 330 60 455 150 S700 225 850 95 S1000 50 1080 78" fill="none" stroke={COLORS.green} strokeWidth="5" strokeLinecap="round" strokeDasharray={`${p*1550} 1550`}/>{[80,455,850,1080].map((x,i)=><circle key={x} cx={x} cy={[190,150,95,78][i]} r={i===active?14:9} fill={i<=active?COLORS.green:'rgba(255,255,255,.18)'} />)}</svg></div></GlassPanel>
+  <GlassPanel style={{position:'absolute',right:90,top:320,width:500,height:545,padding:34}}><Badge color={COLORS.cyan}>PASO {active+1}/4</Badge><div style={{marginTop:30,display:'flex',justifyContent:'center'}}><VisualIcon type={active===0?'brain':active===1?'network':active===2?'shield':'chart'} size={175} color={active===2?COLORS.amber:COLORS.cyan}/></div><div style={{marginTop:22,fontFamily:FONT,color:'#fff',fontSize:33,fontWeight:950,textAlign:'center'}}>{steps[active]}</div><div style={{marginTop:30}}><DonutGauge progress={(p*4)%1} value={.92} color={COLORS.cyan} label="CONFIANZA" size={190}/></div></GlassPanel><Vignette opacity={.24}/></AbsoluteFill>;
 };
-
-// ======================================================
-// COMPARISON — DATOS, BARRAS Y FOCO ALTERNANTE
-// ======================================================
 
 const ComparisonBoard = ({shot}) => {
-  const frame = useCurrentFrame();
-  const {fps} = useVideoConfig();
-  const duration = getDurationFrames(shot);
-  const p = clamp(frame / duration, 0, 1);
-  const title = shortText(getHeadline(shot), 72);
-  const raw = getSupportingText(shot);
-  const leftText = shortText(raw[0] || 'Respuesta rápida, pero con menos explicación.', 100);
-  const rightText = shortText(raw[1] || 'Respuesta verificable con razonamiento paso a paso.', 100);
-  const reveal = spring({frame, fps, config: {damping: 15, stiffness: 100}});
-  const focusRight = p > .48;
-
-  return (
-    <AbsoluteFill style={{background: COLORS.bg}}>
-      <BaseBackground /><Grid opacity={.03} /><AmbientGlow left={focusRight ? '72%' : '28%'} top="52%" size={1100} color={focusRight ? '25,214,163' : '255,102,118'} opacity={.11} />
-      <div style={{position: 'absolute', left: 80, top: 64}}><SectionLabel>COMPARACIÓN</SectionLabel></div>
-      <div style={{position: 'absolute', left: 80, top: 128}}><HeroTitle size={55} width={1500}>{title}</HeroTitle></div>
-      <div style={{position: 'absolute', left: 100, right: 100, top: 335, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 46}}>
-        {[
-          {name: 'OPCIÓN A', color: COLORS.red, text: leftText, score: .58},
-          {name: 'OPCIÓN B', color: COLORS.green, text: rightText, score: .91},
-        ].map((card, i) => {
-          const active = i === (focusRight ? 1 : 0);
-          return <GlassPanel key={card.name} style={{height: 500, padding: 40, opacity: reveal, transform: `translateX(${(1 - reveal) * (i ? 45 : -45)}px) scale(${active ? 1.025 : .985})`, border: `1px solid ${active ? `${card.color}88` : 'rgba(255,255,255,.10)'}`}}>
-            <Badge color={card.color}>{card.name}</Badge>
-            <div style={{marginTop: 34, fontFamily: FONT, color: '#fff', fontSize: 35, fontWeight: 900}}>{i ? 'Más verificable' : 'Más superficial'}</div>
-            <div style={{marginTop: 24, fontFamily: FONT, color: COLORS.soft, fontSize: 25, lineHeight: 1.45}}>{card.text}</div>
-            <div style={{marginTop: 42, display: 'grid', gap: 18}}>
-              {[['Claridad', card.score], ['Justificación', i ? .94 : .46], ['Utilidad', i ? .90 : .68]].map(([label, score]) => <div key={label}>
-                <div style={{display: 'flex', justifyContent: 'space-between', fontFamily: FONT, color: COLORS.soft, fontSize: 20}}><span>{label}</span><span>{Math.round(score * 100)}%</span></div>
-                <div style={{marginTop: 8}}><ProgressBar progress={score * interpolate(p, [.12, .72], [.25, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'})} color={card.color} width={650} /></div>
-              </div>)}
-            </div>
-          </GlassPanel>;
-        })}
-      </div>
-      <Vignette opacity={.24} />
-    </AbsoluteFill>
-  );
+  const frame=useCurrentFrame(); const {fps}=useVideoConfig(); const duration=getDurationFrames(shot); const p=clamp(frame/duration,0,1); const title=shortText(getHeadline(shot),68); const raw=getSupportingText(shot); const reveal=spring({frame,fps,config:{damping:15,stiffness:100}}); const focusRight=p>.52;
+  const left=shortText(raw[0]||'Opción rápida pero menos verificable',62), right=shortText(raw[1]||'Opción explicada y comprobable',62);
+  return <AbsoluteFill style={{background:COLORS.bg}}><BaseBackground/><Grid opacity={.026}/><div style={{position:'absolute',left:80,top:64}}><SectionLabel>COMPARACIÓN</SectionLabel></div><div style={{position:'absolute',left:80,top:128}}><HeroTitle size={55} width={1500}>{title}</HeroTitle></div>
+  <div style={{position:'absolute',left:90,right:90,top:315,display:'grid',gridTemplateColumns:'1fr 1fr',gap:42}}>{[{name:'A',color:COLORS.red,text:left,vals:[.58,.42,.68]},{name:'B',color:COLORS.green,text:right,vals:[.91,.94,.90]}].map((c,i)=>{const active=i===(focusRight?1:0);return <GlassPanel key={c.name} style={{height:535,padding:34,opacity:reveal,transform:`scale(${active?1.02:.985})`,border:`1px solid ${active?c.color+'88':'rgba(255,255,255,.10)'}`}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><Badge color={c.color}>OPCIÓN {c.name}</Badge><VisualIcon type={i?'shield':'brain'} size={88} color={c.color}/></div><div style={{marginTop:18,fontFamily:FONT,color:'#fff',fontSize:28,fontWeight:850}}>{c.text}</div><div style={{display:'grid',gridTemplateColumns:'1.2fr .8fr',gap:24,marginTop:24}}><div><MiniBars progress={p} color={c.color} width={430} height={220} values={c.vals}/></div><div style={{display:'flex',alignItems:'center',justifyContent:'center'}}><DonutGauge progress={p} value={c.vals[0]} color={c.color} label="SCORE" size={190}/></div></div><div style={{marginTop:20}}><Sparkline progress={p} color={c.color} width={630} height={115} variant={i}/></div></GlassPanel>})}</div><Vignette opacity={.23}/></AbsoluteFill>;
 };
-
-// ======================================================
-// PRIVACY / RISK — RENDERER NUEVO
-// ======================================================
 
 const PrivacyRiskBoard = ({shot}) => {
-  const frame = useCurrentFrame();
-  const duration = getDurationFrames(shot);
-  const p = clamp(frame / duration, 0, 1);
-  const title = shortText(getHeadline(shot), 68);
-  const raw = getSupportingText(shot);
-  const risks = [
-    shortText(raw[0] || 'Permisos y acceso a datos', 54),
-    shortText(raw[1] || 'Acciones automáticas sin revisión', 54),
-    shortText(raw[2] || 'Información sensible compartida', 54),
-    shortText(raw[3] || 'Falta de trazabilidad', 54),
-  ];
-  const active = Math.min(3, Math.floor(p * 4));
-
-  return (
-    <AbsoluteFill style={{background: COLORS.bg}}>
-      <BaseBackground /><Grid opacity={.028} /><AmbientGlow left="72%" top="45%" size={1100} color="255,102,118" opacity={.13} />
-      <div style={{position: 'absolute', left: 80, top: 64}}><SectionLabel color={COLORS.red}>PRIVACIDAD Y RIESGO</SectionLabel></div>
-      <div style={{position: 'absolute', left: 80, top: 128}}><HeroTitle size={55} width={1450}>{title}</HeroTitle></div>
-
-      <GlassPanel style={{position: 'absolute', left: 95, top: 340, width: 790, height: 520, padding: 36}}>
-        <Badge color={COLORS.red}>CHECKLIST</Badge>
-        {risks.map((r, i) => {
-          const reveal = interpolate(p, [i * .15, i * .15 + .12], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
-          return <div key={i} style={{marginTop: 24, display: 'flex', gap: 18, alignItems: 'center', opacity: reveal}}>
-            <div style={{width: 46, height: 46, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', background: i <= active ? 'rgba(255,102,118,.12)' : 'rgba(255,255,255,.04)', border: `1px solid ${i <= active ? 'rgba(255,102,118,.5)' : 'rgba(255,255,255,.08)'}`, color: i <= active ? COLORS.red : COLORS.muted, fontWeight: 950}}>{i <= active ? '!' : '·'}</div>
-            <div style={{fontFamily: FONT, color: '#fff', fontSize: 25, fontWeight: 750}}>{r}</div>
-          </div>;
-        })}
-      </GlassPanel>
-
-      <GlassPanel style={{position: 'absolute', right: 95, top: 340, width: 780, height: 520, padding: 38, overflow: 'hidden'}}>
-        <Badge color={COLORS.amber}>NIVEL DE EXPOSICIÓN</Badge>
-        <div style={{marginTop: 34, height: 210, display: 'flex', alignItems: 'end', gap: 26}}>
-          {[.35,.58,.76,.92].map((v, i) => <div key={i} style={{flex: 1, height: `${v * interpolate(p, [.1 + i*.08, .55 + i*.08], [.2, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'}) * 100}%`, minHeight: 20, borderRadius: '14px 14px 4px 4px', background: i === active ? COLORS.red : 'rgba(255,102,118,.28)', boxShadow: i === active ? '0 0 32px rgba(255,102,118,.35)' : 'none'}} />)}
-        </div>
-        <div style={{marginTop: 32, fontFamily: FONT, color: '#fff', fontSize: 34, fontWeight: 900}}>Revisar antes de conceder acceso</div>
-        <div style={{marginTop: 18, fontFamily: FONT, color: COLORS.soft, fontSize: 24, lineHeight: 1.4}}>La automatización útil no debería exigir permisos innecesarios ni ocultar qué acciones puede ejecutar.</div>
-      </GlassPanel>
-      <Vignette opacity={.25} />
-    </AbsoluteFill>
-  );
+  const frame=useCurrentFrame(); const duration=getDurationFrames(shot); const p=clamp(frame/duration,0,1); const title=shortText(getHeadline(shot),68); const raw=getSupportingText(shot); const active=Math.min(3,Math.floor(p*4)); const risks=[shortText(raw[0]||'Permisos',44),shortText(raw[1]||'Acciones automáticas',44),shortText(raw[2]||'Datos sensibles',44),shortText(raw[3]||'Trazabilidad',44)];
+  return <AbsoluteFill style={{background:COLORS.bg}}><BaseBackground/><Grid opacity={.024}/><AmbientGlow left="70%" top="46%" size={1200} color="255,102,118" opacity={.14}/><div style={{position:'absolute',left:80,top:64}}><SectionLabel color={COLORS.red}>PRIVACIDAD Y RIESGO</SectionLabel></div><div style={{position:'absolute',left:80,top:128}}><HeroTitle size={55} width={1450}>{title}</HeroTitle></div>
+  <GlassPanel style={{position:'absolute',left:90,top:320,width:760,height:545,padding:34}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><Badge color={COLORS.red}>SUPERFICIE DE RIESGO</Badge><VisualIcon type="shield" size={95} color={COLORS.red}/></div><div style={{marginTop:24,display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:18}}>{risks.map((r,i)=>{const q=clamp(p*4-i,0,1);return <div key={i} style={{height:155,borderRadius:18,background:i===active?'rgba(255,102,118,.10)':'rgba(255,255,255,.03)',border:`1px solid ${i===active?'rgba(255,102,118,.48)':'rgba(255,255,255,.08)'}`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',opacity:.35+.65*q}}><VisualIcon type={i===0?'device':i===1?'network':i===2?'shield':'chart'} size={62} color={i===active?COLORS.red:COLORS.muted}/><div style={{marginTop:10,fontFamily:FONT,color:'#fff',fontSize:20,fontWeight:800,textAlign:'center',padding:'0 10px'}}>{r}</div></div>})}</div></GlassPanel>
+  <GlassPanel style={{position:'absolute',right:90,top:320,width:830,height:545,padding:36}}><Badge color={COLORS.amber}>EXPOSICIÓN</Badge><div style={{display:'grid',gridTemplateColumns:'1fr .8fr',gap:24,marginTop:30}}><div><MiniBars progress={p} color={COLORS.red} width={470} height={270} values={[.34,.57,.76,.92,.68]}/><div style={{marginTop:24}}><Sparkline progress={p} color={COLORS.amber} width={470} height={120} variant={2}/></div></div><div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}><DonutGauge progress={p} value={.78} color={COLORS.red} label="RIESGO" size={230}/><div style={{marginTop:18,fontFamily:FONT,color:COLORS.soft,fontSize:21,lineHeight:1.35,textAlign:'center'}}>Menos permisos, más control humano.</div></div></div></GlassPanel><Vignette opacity={.25}/></AbsoluteFill>;
 };
-
-// ======================================================
-// GENERIC — FALLBACK EDITORIAL, NO PANTALLA ESTÁTICA
-// ======================================================
 
 const GenericVisual = ({shot}) => {
-  const frame = useCurrentFrame();
-  const duration = getDurationFrames(shot);
-  const p = clamp(frame / duration, 0, 1);
-  const src = getStockUrl(shot);
-  const title = shortText(getHeadline(shot), 66);
-  const raw = getSupportingText(shot);
-  const variant = hashString(shot?.shotId || title) % 3;
-  const chips = [shortText(raw[0] || 'Contexto', 30), shortText(raw[1] || 'Dato clave', 30), shortText(raw[2] || 'Conclusión', 30)];
-
-  return (
-    <AbsoluteFill style={{background: COLORS.bg, overflow: 'hidden'}}>
-      {src ? <CinematicVideo shot={shot} darkness={.34} /> : <><BaseBackground /><Grid opacity={.03} /></>}
-      <AmbientGlow left={variant === 0 ? '70%' : '30%'} top="48%" size={1050} color={variant === 2 ? '168,121,255' : '41,211,255'} opacity={.13} />
-      <div style={{position: 'absolute', left: 82, top: 72}}><SectionLabel>{src ? 'CONTEXTO REAL' : 'CONTEXTO'}</SectionLabel></div>
-      <div style={{position: 'absolute', left: 82, top: 140}}><HeroTitle size={62} width={1080}>{title}</HeroTitle></div>
-
-      {variant === 0 && <div style={{position: 'absolute', left: 86, bottom: 110, display: 'flex', gap: 18}}>{chips.map((c, i) => {
-        const q = interpolate(p, [i * .15, i * .15 + .12], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
-        return <div key={i} style={{padding: '18px 24px', borderRadius: 16, background: 'rgba(5,10,18,.76)', border: '1px solid rgba(255,255,255,.12)', color: '#fff', fontFamily: FONT, fontSize: 22, fontWeight: 800, opacity: q, transform: `translateY(${(1 - q) * 24}px)`}}>{c}</div>;
-      })}</div>}
-
-      {variant === 1 && <GlassPanel style={{position: 'absolute', right: 100, top: 345, width: 610, height: 430, padding: 32}}>
-        <Badge color={COLORS.purple}>SEÑALES</Badge>
-        {chips.map((c, i) => <div key={i} style={{marginTop: 28}}><div style={{fontFamily: FONT, color: '#fff', fontSize: 24, fontWeight: 800}}>{c}</div><div style={{marginTop: 10}}><ProgressBar progress={clamp(p * 1.25 - i * .12, 0, 1)} color={i === 2 ? COLORS.green : COLORS.cyan} width={500} /></div></div>)}
-      </GlassPanel>}
-
-      {variant === 2 && <div style={{position: 'absolute', left: 95, right: 95, bottom: 100, display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24}}>{chips.map((c, i) => {
-        const q = interpolate(p, [i * .14, i * .14 + .15], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
-        return <GlassPanel key={i} style={{padding: 28, minHeight: 210, opacity: q, transform: `scale(${.94 + .06 * q})`}}><div style={{fontFamily: FONT, color: COLORS.cyan, fontSize: 18, fontWeight: 900}}>0{i + 1}</div><div style={{marginTop: 22, fontFamily: FONT, color: '#fff', fontSize: 27, fontWeight: 850}}>{c}</div></GlassPanel>;
-      })}</div>}
-      <Vignette opacity={.28} />
-    </AbsoluteFill>
-  );
+  const frame=useCurrentFrame(); const duration=getDurationFrames(shot); const p=clamp(frame/duration,0,1); const src=getStockUrl(shot); const imageUrl=getImageUrl(shot); const title=shortText(getHeadline(shot),68); const raw=getSupportingText(shot); const variant=hashString(shot?.shotId||title)%3;
+  return <AbsoluteFill style={{background:COLORS.bg,overflow:'hidden'}}>{src?<CinematicVideo shot={shot} darkness={.28}/>:imageUrl?<><Img src={imageUrl} style={{width:'100%',height:'100%',objectFit:'cover'}}/><AbsoluteFill style={{background:'linear-gradient(90deg,rgba(3,6,12,.76),rgba(3,6,12,.25),rgba(3,6,12,.72))'}}/></>:<><BaseBackground/><Grid opacity={.026}/></>}<AmbientGlow left={variant===0?'72%':'30%'} top="50%" size={1150} color={variant===2?'168,121,255':'41,211,255'} opacity={.13}/><div style={{position:'absolute',left:80,top:64}}><SectionLabel>{src||imageUrl?'CONTEXTO VISUAL':'VISUALIZACIÓN'}</SectionLabel></div><div style={{position:'absolute',left:80,top:128}}><HeroTitle size={57} width={1100}>{title}</HeroTitle></div>
+  {!src&&!imageUrl&&variant===0&&<GlassPanel style={{position:'absolute',right:100,top:300,width:760,height:560,padding:36}}><Badge color={COLORS.cyan}>TENDENCIA</Badge><div style={{marginTop:35}}><Sparkline progress={p} color={COLORS.cyan} width={670} height={250}/></div><div style={{marginTop:25}}><MiniBars progress={p} color={COLORS.purple} width={670} height={170}/></div></GlassPanel>}
+  {!src&&!imageUrl&&variant===1&&<GlassPanel style={{position:'absolute',right:100,top:320,width:760,height:520,padding:36}}><Badge color={COLORS.green}>MAPA</Badge><div style={{marginTop:55}}><FlowDiagram progress={p} accent={COLORS.green} labels={['SEÑAL','ANÁLISIS','DECISIÓN','ACCIÓN']}/></div><div style={{display:'flex',justifyContent:'center',marginTop:60}}><VisualIcon type="network" size={180} color={COLORS.green}/></div></GlassPanel>}
+  {!src&&!imageUrl&&variant===2&&<GlassPanel style={{position:'absolute',right:105,top:315,width:760,height:530,padding:38}}><Badge color={COLORS.purple}>INDICADORES</Badge><div style={{display:'flex',justifyContent:'space-around',marginTop:38}}><DonutGauge progress={p} value={.87} color={COLORS.cyan} label="SEÑAL" size={210}/><DonutGauge progress={p} value={.73} color={COLORS.purple} label="IMPACTO" size={210}/></div><div style={{marginTop:30}}><Sparkline progress={p} color={COLORS.purple} width={650} height={130} variant={1}/></div></GlassPanel>}
+  {(src||imageUrl)&&<div style={{position:'absolute',left:85,bottom:90,display:'flex',gap:16}}>{[shortText(raw[0]||'Contexto',28),shortText(raw[1]||'Dato clave',28),shortText(raw[2]||'Conclusión',28)].map((x,i)=><div key={i} style={{padding:'16px 22px',borderRadius:15,background:'rgba(4,9,16,.78)',border:'1px solid rgba(255,255,255,.12)',fontFamily:FONT,color:'#fff',fontSize:20,fontWeight:800,opacity:clamp(p*4-i,0,1)}}>{x}</div>)}</div>}<Vignette opacity={.28}/></AbsoluteFill>;
 };
 
-// ======================================================
-// CTA — CIERRE CON PROGRESIÓN
-// ======================================================
-
 const CTAEndcard = ({shot}) => {
-  const frame = useCurrentFrame();
-  const {fps} = useVideoConfig();
-  const duration = getDurationFrames(shot);
-  const p = clamp(frame / duration, 0, 1);
-  const texts = getTextElements(shot);
-  const question = shortText(texts[0] || getHeadline(shot) || '¿Qué probarías tú?', 70);
-  const action = shortText(texts[1] || 'Cuéntamelo en comentarios', 70);
-  const pop = spring({frame, fps, config: {damping: 14, stiffness: 105}});
-  const commentIn = interpolate(p, [.28, .48], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
-
-  return (
-    <AbsoluteFill style={{background: COLORS.bg}}>
-      <BaseBackground /><Grid opacity={.025} /><AmbientGlow left="50%" top="50%" size={1250} color="41,211,255" opacity={.17} />
-      <AbsoluteFill style={{justifyContent: 'center', alignItems: 'center'}}>
-        <GlassPanel style={{width: 1240, padding: '58px 78px', textAlign: 'center', transform: `scale(${.92 + pop * .08})`, border: '1px solid rgba(41,211,255,.28)'}}>
-          <Badge color={COLORS.cyan}>TU TURNO</Badge>
-          <div style={{marginTop: 30, fontFamily: FONT, color: '#fff', fontSize: 70, fontWeight: 950, letterSpacing: -2}}>{question}</div>
-          <div style={{margin: '38px auto 0', width: 800, padding: '22px 28px', borderRadius: 18, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.12)', opacity: commentIn, transform: `translateY(${(1 - commentIn) * 24}px)`}}>
-            <div style={{fontFamily: FONT, color: COLORS.soft, fontSize: 27, fontWeight: 750}}>{action}</div>
-          </div>
-          <div style={{margin: '30px auto 0'}}><ProgressBar progress={p} color={COLORS.cyan} width={420} /></div>
-        </GlassPanel>
-      </AbsoluteFill>
-      <Vignette opacity={.30} />
-    </AbsoluteFill>
-  );
+  const frame=useCurrentFrame(); const {fps}=useVideoConfig(); const duration=getDurationFrames(shot); const p=clamp(frame/duration,0,1); const texts=getTextElements(shot); const q=shortText(texts[0]||getHeadline(shot)||'¿Qué probarías tú?',70); const a=shortText(texts[1]||'Cuéntamelo en comentarios',70); const pop=spring({frame,fps,config:{damping:14,stiffness:105}});
+  return <AbsoluteFill style={{background:COLORS.bg}}><BaseBackground/><Grid opacity={.024}/><AmbientGlow left="50%" top="50%" size={1250} color="41,211,255" opacity={.18}/><div style={{position:'absolute',left:150,top:300,width:700,height:480}}><GlassPanel style={{height:'100%',padding:42,transform:`scale(${.94+.06*pop})`}}><Badge color={COLORS.cyan}>TU TURNO</Badge><div style={{marginTop:28,fontFamily:FONT,color:'#fff',fontSize:58,fontWeight:950,lineHeight:1.05}}>{q}</div><div style={{marginTop:30,fontFamily:FONT,color:COLORS.soft,fontSize:26}}>{a}</div><div style={{marginTop:38}}><ProgressBar progress={p} color={COLORS.cyan} width={600}/></div></GlassPanel></div><div style={{position:'absolute',right:170,top:270,width:720,height:520}}><GlassPanel style={{height:'100%',padding:38,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}><div style={{display:'flex',gap:30,alignItems:'center'}}><VisualIcon type="device" size={150} color={COLORS.cyan}/><VisualIcon type="network" size={150} color={COLORS.purple}/><VisualIcon type="chart" size={150} color={COLORS.green}/></div><div style={{marginTop:38}}><Sparkline progress={p} color={COLORS.cyan} width={580} height={150} variant={2}/></div><div style={{marginTop:20,display:'flex',gap:18}}>{['COMENTA','PRUEBA','COMPARTE'].map((x,i)=><div key={x} style={{padding:'14px 18px',borderRadius:12,background:'rgba(255,255,255,.04)',border:`1px solid ${i===Math.min(2,Math.floor(p*3))?COLORS.cyan:'rgba(255,255,255,.08)'}`,fontFamily:FONT,color:'#fff',fontWeight:900,opacity:.4+.6*clamp(p*3-i,0,1)}}>{x}</div>)}</div></GlassPanel></div><Vignette opacity={.30}/></AbsoluteFill>;
 };
 
 const ShotRenderer = ({shot}) => {
