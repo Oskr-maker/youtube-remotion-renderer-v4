@@ -525,64 +525,131 @@ const CTAEndcard = ({shot}) => {
   return <AbsoluteFill style={{background:COLORS.bg}}><BaseBackground/><Grid opacity={.024}/><AmbientGlow left="50%" top="50%" size={1250} color="41,211,255" opacity={.18}/><div style={{position:'absolute',left:150,top:300,width:700,height:480}}><GlassPanel style={{height:'100%',padding:42,transform:`scale(${.94+.06*pop})`}}><Badge color={COLORS.cyan}>TU TURNO</Badge><div style={{marginTop:28,fontFamily:FONT,color:'#fff',fontSize:58,fontWeight:950,lineHeight:1.05}}>{q}</div><div style={{marginTop:30,fontFamily:FONT,color:COLORS.soft,fontSize:26}}>{a}</div><div style={{marginTop:38}}><ProgressBar progress={p} color={COLORS.cyan} width={600}/></div></GlassPanel></div><div style={{position:'absolute',right:170,top:270,width:720,height:520}}><GlassPanel style={{height:'100%',padding:38,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}><div style={{display:'flex',gap:30,alignItems:'center'}}><VisualIcon type="device" size={150} color={COLORS.cyan}/><VisualIcon type="network" size={150} color={COLORS.purple}/><VisualIcon type="chart" size={150} color={COLORS.green}/></div><div style={{marginTop:38}}><Sparkline progress={p} color={COLORS.cyan} width={580} height={150} variant={2}/></div><div style={{marginTop:20,display:'flex',gap:18}}>{['COMENTA','PRUEBA','COMPARTE'].map((x,i)=><div key={x} style={{padding:'14px 18px',borderRadius:12,background:'rgba(255,255,255,.04)',border:`1px solid ${i===Math.min(2,Math.floor(p*3))?COLORS.cyan:'rgba(255,255,255,.08)'}`,fontFamily:FONT,color:'#fff',fontWeight:900,opacity:.4+.6*clamp(p*3-i,0,1)}}>{x}</div>)}</div></GlassPanel></div><Vignette opacity={.30}/></AbsoluteFill>;
 };
 
+
+// =============================================================
+// V6 — EDITORIAL CINEMATIC ENGINE
+// Preserva LogicHookStage S0 y Composition id YouTubeV4.
+// No convierte cifras inventadas en datos reales.
+// =============================================================
+const pickMedia = (shot) => {
+  const source = getStockUrl(shot);
+  const image = getImageUrl(shot);
+  return {source: typeof source === 'string' ? source : null, image: typeof image === 'string' ? image : null};
+};
+const field = (shot, ...keys) => {
+  for (const key of keys) {
+    const found = key.split('.').reduce((o, k) => o?.[k], shot);
+    if (typeof found === 'string' && found.trim()) return found.trim();
+  }
+  return '';
+};
+const uniqueCopy = (shot) => {
+  const items = [...getTextElements(shot), field(shot,'subtitle'), field(shot,'description'), field(shot,'visualIdea')]
+    .filter((x) => typeof x === 'string' && x.trim());
+  return [...new Set(items.map(x=>x.trim()))];
+};
+const cinematicTitle = (shot) => {
+  const t = field(shot,'title','sceneTitle','headline') || uniqueCopy(shot)[0] || 'La idea clave';
+  return shortText(t, 104);
+};
+const editorialAccent = (shot) => {
+  const kind = `${getTemplate(shot)} ${getLayout(shot)} ${field(shot,'sceneType')}`;
+  if (/risk|privacy|error|danger|warning|riesgo|privacidad/.test(kind)) return COLORS.red;
+  if (/comparison|before_after|comparaci/.test(kind)) return COLORS.amber;
+  if (/cta|ending|endcard/.test(kind)) return COLORS.green;
+  if (/logic|reasoning|workflow|diagram|flow/.test(kind)) return COLORS.purple;
+  return COLORS.cyan;
+};
+const v6Ease = (p) => p*p*(3-2*p);
+const V6Media = ({shot, shade = .25}) => {
+  const frame = useCurrentFrame();
+  const p = clamp(frame/getDurationFrames(shot),0,1);
+  const {source,image} = pickMedia(shot);
+  const mediaStyle = {width:'100%',height:'100%',objectFit:'cover',transform:`scale(${1.035 + p*.055}) translateX(${(p-.5)*1.4}%)`,filter:'contrast(1.07) saturate(1.08)'};
+  return <AbsoluteFill style={{overflow:'hidden',background:COLORS.bg}}>
+    {source ? <Video src={source} muted style={mediaStyle}/> : image ? <Img src={image} style={mediaStyle}/> : <><BaseBackground/><Grid opacity={.04}/></>}
+    <AbsoluteFill style={{background:`linear-gradient(90deg,rgba(3,8,16,${shade+.45}) 0%,rgba(3,8,16,${shade+.11}) 53%,rgba(3,8,16,${shade+.20}) 100%)`}}/>
+    <Vignette opacity={.2}/>
+  </AbsoluteFill>;
+};
+const V6Kicker = ({children,color=COLORS.cyan}) => <div style={{display:'flex',alignItems:'center',gap:14,fontFamily:FONT,fontSize:22,letterSpacing:3.5,fontWeight:900,color:'#f5f7ff',textTransform:'uppercase'}}><div style={{height:4,width:48,background:color,borderRadius:5}}/>{children}</div>;
+const V6Heading = ({children,size=83}) => <div style={{fontFamily:FONT,fontWeight:950,fontSize:size,lineHeight:1.045,letterSpacing:-2.7,color:'#fff',textShadow:'0 8px 36px rgba(0,0,0,.46)',overflowWrap:'break-word'}}>{children}</div>;
+const V6LowerThird = ({text,color}) => text ? <div style={{padding:'19px 28px',borderLeft:`6px solid ${color}`,background:'rgba(4,9,18,.78)',backdropFilter:'blur(16px)',borderRadius:'0 18px 18px 0',color:'#f1f6ff',fontFamily:FONT,fontSize:28,lineHeight:1.28,fontWeight:650,maxWidth:1080}}>{shortText(text,115)}</div> : null;
+const V6Progress = ({shot, color}) => {
+  const frame=useCurrentFrame(), duration=getDurationFrames(shot),p=clamp((frame+1)/duration,0,1);
+  return <div style={{position:'absolute',bottom:0,left:0,right:0,height:6,background:'rgba(255,255,255,.08)'}}><div style={{height:'100%',width:`${p*100}%`,background:color}}/></div>;
+};
+const V6PhotoStory = ({shot}) => {
+  const frame=useCurrentFrame(),{fps}=useVideoConfig(),dur=getDurationFrames(shot),p=clamp(frame/dur,0,1);
+  const accent=editorialAccent(shot),copy=uniqueCopy(shot),title=cinematicTitle(shot),sub=copy.find(x=>x!==title);
+  const enter=spring({frame,fps,config:{damping:19,stiffness:90}});
+  return <AbsoluteFill><V6Media shot={shot}/><AmbientGlow left="78%" top="58%" size={720} color="41,211,255" opacity={.06}/>
+   <div style={{position:'absolute',left:110,top:100,right:100,opacity:enter,transform:`translateY(${(1-enter)*38}px)`}}><V6Kicker color={accent}>{field(shot,'sceneType') || 'HISTORIA VISUAL'}</V6Kicker></div>
+   <div style={{position:'absolute',left:110,right:205,top:315,opacity:enter,transform:`translateY(${(1-enter)*44}px)`}}><V6Heading size={title.length>83?64:title.length>55?73:89}>{title}</V6Heading></div>
+   <div style={{position:'absolute',left:110,bottom:115,opacity:interpolate(p,[.18,.35],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'})}}><V6LowerThird text={sub&&sub!==title?sub:''} color={accent}/></div><V6Progress shot={shot} color={accent}/>
+  </AbsoluteFill>;
+};
+const V6Timeline = ({shot}) => {
+  const frame=useCurrentFrame(),{fps}=useVideoConfig(),dur=getDurationFrames(shot),p=clamp(frame/dur,0,1),accent=editorialAccent(shot);
+  const copy=uniqueCopy(shot).filter(x=>x!==cinematicTitle(shot)).slice(0,4);
+  const parts=copy.length?copy:['Planteamiento','Proceso','Comprobación','Resultado'];
+  const active=Math.min(parts.length-1,Math.floor(p*parts.length));
+  return <AbsoluteFill><V6Media shot={shot} shade={.43}/><div style={{position:'absolute',top:75,left:90}}><V6Kicker color={accent}>EXPLICACIÓN PASO A PASO</V6Kicker></div><div style={{position:'absolute',left:90,top:145,width:1680}}><V6Heading size={cinematicTitle(shot).length>65?58:71}>{cinematicTitle(shot)}</V6Heading></div>
+  <div style={{position:'absolute',left:90,right:90,bottom:150,display:'flex',gap:18,alignItems:'stretch'}}>{parts.map((item,i)=>{
+    const entry=clamp((frame-i*fps*.19)/(fps*.35),0,1),on=i===active;
+    return <div key={i} style={{flex:1,minWidth:0,opacity:.4+.6*entry,transform:`translateY(${(1-v6Ease(entry))*35}px)`,padding:'25px 21px',background:on?'rgba(16,31,49,.94)':'rgba(9,17,30,.76)',borderTop:`6px solid ${on?accent:'rgba(255,255,255,.22)'}`,borderRadius:12,boxShadow:on?'0 18px 55px rgba(0,0,0,.36)':'none'}}><div style={{fontFamily:FONT,fontSize:22,fontWeight:950,color:accent,marginBottom:12}}>{String(i+1).padStart(2,'0')}</div><div style={{fontFamily:FONT,fontSize:25,lineHeight:1.22,fontWeight:750,color:'#fff',overflowWrap:'break-word'}}>{shortText(item,64)}</div></div>
+  })}</div><V6Progress shot={shot} color={accent}/></AbsoluteFill>;
+};
+const V6Comparison = ({shot}) => {
+ const frame=useCurrentFrame(),dur=getDurationFrames(shot),p=clamp(frame/dur,0,1),text=uniqueCopy(shot),title=cinematicTitle(shot);
+ const details=text.filter(x=>x!==title);
+ const left=field(shot,'leftLabel','comparison.left.title')||details[0]||'Antes';
+ const right=field(shot,'rightLabel','comparison.right.title')||details[1]||'Después';
+ return <AbsoluteFill><V6Media shot={shot} shade={.62}/><div style={{position:'absolute',left:94,top:72}}><V6Kicker color={COLORS.amber}>DOS ENFOQUES</V6Kicker></div><div style={{position:'absolute',left:94,top:140,width:1680}}><V6Heading size={title.length>65?58:75}>{title}</V6Heading></div>
+  <div style={{position:'absolute',left:94,right:94,top:365,bottom:130,display:'grid',gridTemplateColumns:'1fr 1fr',gap:28}}>{[left,right].map((x,i)=>{const q=clamp((p-(i*.23))/.35,0,1),accent=i?COLORS.green:COLORS.amber;return <div key={i} style={{background:'rgba(7,16,29,.88)',border:`1px solid ${accent}99`,borderRadius:28,padding:42,transform:`translateY(${(1-v6Ease(q))*50}px)`,opacity:q,display:'flex',flexDirection:'column',justifyContent:'space-between'}}><div style={{fontFamily:FONT,color:accent,fontWeight:950,fontSize:23,letterSpacing:4}}>{i?'02  /  DESPUÉS':'01  /  ANTES'}</div><div style={{fontFamily:FONT,color:'#fff',fontSize:47,lineHeight:1.13,fontWeight:900}}>{shortText(x,90)}</div><div style={{height:5,width:`${Math.round((.45+.55*q)*100)}%`,background:accent,borderRadius:4}}/></div>})}</div><V6Progress shot={shot} color={COLORS.amber}/></AbsoluteFill>;
+};
+const V6Editorial = ({shot}) => {
+ const {source,image}=pickMedia(shot);
+ const frame=useCurrentFrame(),dur=getDurationFrames(shot),p=clamp(frame/dur,0,1),accent=editorialAccent(shot),copy=uniqueCopy(shot),title=cinematicTitle(shot);
+ const points=copy.filter(x=>x!==title).slice(0,3);
+ return <AbsoluteFill><V6Media shot={shot} shade={source||image?.34:.2}/><div style={{position:'absolute',left:85,top:78}}><V6Kicker color={accent}>IDEA CENTRAL</V6Kicker></div><div style={{position:'absolute',left:85,top:160,width:1510}}><V6Heading size={title.length>65?60:79}>{title}</V6Heading></div>
+ <div style={{position:'absolute',bottom:118,left:85,right:85,display:'flex',gap:20}}>{points.length?points.map((x,i)=>{const q=clamp((p-i*.18)/.34,0,1);return <div key={i} style={{flex:1,minWidth:0,background:'rgba(5,12,23,.83)',borderTop:`5px solid ${accent}`,padding:'23px 26px',borderRadius:14,opacity:q,transform:`translateY(${(1-v6Ease(q))*35}px)`,fontFamily:FONT,color:'#fff',fontSize:25,lineHeight:1.23,fontWeight:800}}>{shortText(x,75)}</div>}):<div style={{width:600,height:5,background:accent,transform:`scaleX(${p})`,transformOrigin:'left'}}/>}</div><V6Progress shot={shot} color={accent}/></AbsoluteFill>;
+};
+const V6CallToAction = ({shot}) => {
+ const frame=useCurrentFrame(),{fps}=useVideoConfig(),p=clamp(frame/getDurationFrames(shot),0,1),a=spring({frame,fps,config:{damping:18,stiffness:80}});
+ const content=uniqueCopy(shot),title=cinematicTitle(shot);
+ return <AbsoluteFill><V6Media shot={shot} shade={.56}/><AmbientGlow left="55%" top="50%" size={1100} color="25,214,163" opacity={.16}/><div style={{position:'absolute',left:130,right:130,top:230,transform:`scale(${.93+.07*a})`,opacity:a,textAlign:'center'}}><V6Kicker color={COLORS.green}>AHORA TE TOCA</V6Kicker><div style={{marginTop:55}}><V6Heading size={title.length>55?70:90}>{title}</V6Heading></div><div style={{fontFamily:FONT,color:COLORS.soft,fontSize:36,marginTop:45}}>{shortText(content.find(x=>x!==title)||'Cuéntanos qué opinas',100)}</div><div style={{height:7,width:Math.round(520*p),background:COLORS.green,borderRadius:8,margin:'65px auto 0'}}/></div></AbsoluteFill>;
+};
 const ShotRenderer = ({shot}) => {
-  const template = getTemplate(shot);
-  const layout = getLayout(shot);
-
-  if (template === 'logic_hook' || layout === 'logic_hook_stage' || template === 'hook_transformation') return <LogicHookStage shot={shot} />;
-  if (template === 'ui_explainer' || layout === 'ui_explainer' || template === 'intro_problem_solution' || template === 'gemini_gem_setup' || template === 'instruction_builder') return <UIExplainer shot={shot} />;
-  if (template === 'logic_reasoning' || layout === 'logic_reasoning_flow' || template === 'notes_to_structure') return <LogicReasoning shot={shot} />;
-  if (template === 'comparison' || layout === 'comparison_board' || template === 'dual_tool_comparison' || template === 'before_after_validation') return <ComparisonBoard shot={shot} />;
-  if (template === 'privacy_risk' || layout === 'risk_checklist' || template.includes('privacy') || layout.includes('risk')) return <PrivacyRiskBoard shot={shot} />;
-  if (template === 'cta' || template === 'cta_endcard' || layout === 'cta_endcard') return <CTAEndcard shot={shot} />;
-  return <GenericVisual shot={shot} />;
+ const template=getTemplate(shot),layout=getLayout(shot),kind=field(shot,'sceneType'),combined=`${template} ${layout} ${kind}`.toLowerCase();
+ // S0 se conserva literalmente como en V5.6.
+ if(template==='logic_hook'||layout==='logic_hook_stage'||template==='hook_transformation'||(shot?.sceneId==='S0'&&/hook/.test(combined))) return <LogicHookStage shot={shot}/>;
+ if(/cta|endcard|closing/.test(combined)) return <V6CallToAction shot={shot}/>;
+ if(/comparison|before_after|versus|contrast/.test(combined)) return <V6Comparison shot={shot}/>;
+ if(/reason|explain|flow|step|logic|ui_|diagram|instruction|privacy|risk|process/.test(combined)) return <V6Timeline shot={shot}/>;
+ const {source,image}=pickMedia(shot);
+ if(source||image) return <V6PhotoStory shot={shot}/>;
+ return <V6Editorial shot={shot}/>;
 };
-
-const normalizeShots = ({timelineShots = [], scenes = [], scene = null, visual = null}) => {
-  if (Array.isArray(timelineShots) && timelineShots.length) {
-    return timelineShots.map((shot) => {
-      const matchingScene = safeArray(scenes).find((item) => item?.sceneId === shot?.sceneId);
-      return {...(matchingScene || {}), ...(scene || {}), ...shot, visual: visual || shot?.visual || null};
-    });
-  }
-  if (scene) return [{...scene, visual: visual || null, startFrame: 0, durationFrames: scene?.durationFrames || 300}];
-  if (Array.isArray(scenes) && scenes.length) {
-    return scenes.map((item, index) => ({...item, startFrame: item?.startFrame || 0, durationFrames: item?.durationFrames || 300, shotId: item?.shotId || `${item?.sceneId || index}_SHOT`}));
-  }
-  return [];
+const normalizeShots = ({timelineShots=[],scenes=[],scene=null,visual=null}) => {
+ if(Array.isArray(timelineShots)&&timelineShots.length){return timelineShots.map((shot,i)=>{
+  const matchingScene=safeArray(scenes).find(x=>x?.sceneId===shot?.sceneId);
+  const merged={...(matchingScene||{}),...(scene||{}),...shot,visual:shot?.visual||visual||matchingScene?.visual||null};
+  const start=Number(shot?.startFrame??shot?.globalStartFrame??0);
+  return {...merged,shotId:shot?.shotId||`${shot?.sceneId||'S'}_${i}`,startFrame:Number.isFinite(start)?Math.max(0,start):0,durationFrames:Math.max(1,Number(shot?.durationFrames??shot?.renderTarget?.durationFrames??300)||300)};
+ });}
+ if(scene)return [{...scene,visual:scene?.visual||visual||null,startFrame:0,durationFrames:Math.max(1,Number(scene?.durationFrames||300))}];
+ if(Array.isArray(scenes)&&scenes.length){let cursor=0;return scenes.map((s,i)=>{const duration=Math.max(1,Number(s?.durationFrames||300));const start=Number(s?.startFrame??cursor);cursor=start+duration;return {...s,shotId:s?.shotId||`${s?.sceneId||i}_SHOT`,startFrame:start,durationFrames:duration};});}
+ return [];
 };
-
-const YouTubeV4 = ({timelineShots = [], scenes = [], scene = null, visual = null}) => {
-  const shots = normalizeShots({timelineShots, scenes, scene, visual});
-  return (
-    <AbsoluteFill style={{background: COLORS.bg}}>
-      {shots.map((shot, index) => (
-        <Sequence
-          key={shot?.shotId || shot?.sceneId || index}
-          from={Number(shot?.startFrame || 0)}
-          durationInFrames={Math.max(1, Number(shot?.durationFrames || 1))}
-        >
-          <ShotRenderer shot={shot} />
-        </Sequence>
-      ))}
-    </AbsoluteFill>
-  );
+const YouTubeV4 = ({timelineShots=[],scenes=[],scene=null,visual=null}) => {
+ const shots=normalizeShots({timelineShots,scenes,scene,visual});
+ // Individual render requests use shot local time. Full-film requests use startFrame.
+ const localOnly=shots.length===1;
+ return <AbsoluteFill style={{background:COLORS.bg}}>{shots.map((shot,i)=><Sequence key={`${shot.shotId||i}_${i}`} from={localOnly?0:shot.startFrame} durationInFrames={shot.durationFrames}><ShotRenderer shot={shot}/></Sequence>)}</AbsoluteFill>;
 };
-
-export const RemotionRoot = () => (
-  <Composition
-    id="YouTubeV4"
-    component={YouTubeV4}
-    durationInFrames={DEFAULT_PROPS.totalDurationFrames}
-    fps={DEFAULT_PROPS.fps}
-    width={1920}
-    height={1080}
-    defaultProps={DEFAULT_PROPS}
-    calculateMetadata={async ({props}) => ({
-      durationInFrames: Math.max(1, Number(props?.totalDurationFrames || props?.scene?.durationFrames || props?.timelineShots?.[0]?.durationFrames || 300)),
-      fps: Number(props?.fps || 30),
-      width: 1920,
-      height: 1080,
-    })}
-  />
-);
+export const RemotionRoot=()=><Composition id="YouTubeV4" component={YouTubeV4} durationInFrames={DEFAULT_PROPS.totalDurationFrames} fps={DEFAULT_PROPS.fps} width={1920} height={1080} defaultProps={DEFAULT_PROPS} calculateMetadata={async({props})=>{
+ const shots=normalizeShots(props||{});
+ const longest=shots.reduce((m,s)=>Math.max(m,(shots.length===1?0:s.startFrame)+s.durationFrames),0);
+ return {durationInFrames:Math.max(1,longest || Number(props?.totalDurationFrames||300)),fps:Number(props?.fps||30),width:1920,height:1080};
+ }}/>;
