@@ -646,10 +646,91 @@ const YouTubeV4 = ({timelineShots=[],scenes=[],scene=null,visual=null}) => {
  const shots=normalizeShots({timelineShots,scenes,scene,visual});
  // Individual render requests use shot local time. Full-film requests use startFrame.
  const localOnly=shots.length===1;
- return <AbsoluteFill style={{background:COLORS.bg}}>{shots.map((shot,i)=><Sequence key={`${shot.shotId||i}_${i}`} from={localOnly?0:shot.startFrame} durationInFrames={shot.durationFrames}><ShotRenderer shot={shot}/></Sequence>)}</AbsoluteFill>;
+ return <AbsoluteFill style={{background:COLORS.bg}}>{shots.map((shot,i)=><Sequence key={`${shot.shotId||i}_${i}`} from={localOnly?0:shot.startFrame} durationInFrames={shot.durationFrames}><V7ShotRenderer shot={shot}/></Sequence>)}</AbsoluteFill>;
 };
 export const RemotionRoot=()=><Composition id="YouTubeV4" component={YouTubeV4} durationInFrames={DEFAULT_PROPS.totalDurationFrames} fps={DEFAULT_PROPS.fps} width={1920} height={1080} defaultProps={DEFAULT_PROPS} calculateMetadata={async({props})=>{
  const shots=normalizeShots(props||{});
  const longest=shots.reduce((m,s)=>Math.max(m,(shots.length===1?0:s.startFrame)+s.durationFrames),0);
  return {durationInFrames:Math.max(1,longest || Number(props?.totalDurationFrames||300)),fps:Number(props?.fps||30),width:1920,height:1080};
  }}/>;
+
+// ============================================================
+// V7 EDITORIAL GRAPHICS - additive upgrade; preserves S0.
+// ============================================================
+const V7Palette = { ink:'#07101b',panel:'#101d2b',edge:'rgba(255,255,255,.18)',text:'#f7fbff',muted:'#a2b5c5',cyan:'#36d4e8',lime:'#66e4b5',gold:'#f7bf66',pink:'#f082ae' };
+const V7Clean = v => String(v ?? '').replace(/\s+/g,' ').trim();
+const V7Array = v => Array.isArray(v)?v:[];
+const V7Short = (v,max=68) => {const t=V7Clean(v);return t.length>max?t.slice(0,max-1).trim()+'…':t;};
+const V7Theme = shot => {
+  const kind = String(shot?.semanticGroup || shot?.template || '').toLowerCase();
+  if(/privacy|risk|security/.test(kind))return V7Palette.pink;
+  if(/comparison/.test(kind))return V7Palette.gold;
+  if(/logic|reason/.test(kind))return V7Palette.lime;
+  return V7Palette.cyan;
+};
+const V7Text = shot => {
+  const parts=V7Array(shot?.textElements).filter(x=>typeof x==='string' && x.trim() && !/^intro$|^hook$|^conclusi[oó]n$|^secci[oó]n$/i.test(x.trim()));
+  const title=parts[0] || V7Clean(shot?.sceneTitle) || 'Concepto';
+  const extras=parts.slice(1).filter(x=>x!==title);
+  return {title:V7Short(title,86),extras:extras.slice(0,3).map(x=>V7Short(x,74))};
+};
+const V7Canvas = ({shot,children,accent}) => {
+  const frame=useCurrentFrame();const {fps}=useVideoConfig();
+  const duration=Math.max(1,Number(shot?.durationFrames)||150);
+  const p=Math.min(1,frame/duration);
+  const gridOffset=frame/fps*8;
+  return <AbsoluteFill style={{background:V7Palette.ink,overflow:'hidden',fontFamily:'Arial,Helvetica,sans-serif',color:V7Palette.text}}>
+    <AbsoluteFill style={{background:'radial-gradient(ellipse at 80% 30%,rgba(50,115,160,.17),transparent 55%),linear-gradient(125deg,#07101b,#0a1725 55%,#060c16)'}}/>
+    <AbsoluteFill style={{opacity:.12,backgroundImage:'linear-gradient(rgba(255,255,255,.13) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.13) 1px,transparent 1px)',backgroundSize:'66px 66px',backgroundPosition:`${gridOffset}px 0px`}}/>
+    {children}
+    <div style={{position:'absolute',bottom:0,left:0,width:`${p*100}%`,height:6,background:accent}}/>
+    <div style={{position:'absolute',right:62,bottom:39,fontSize:17,letterSpacing:3,color:'#a7b7c7'}}>VISUAL ESSAY · {V7Clean(shot?.sceneId)}</div>
+  </AbsoluteFill>;
+};
+const V7Header=({shot,accent,eyebrow})=>{
+ const frame=useCurrentFrame();const {fps}=useVideoConfig();const entering=spring({frame,fps,config:{damping:20,stiffness:90}});
+ const {title}=V7Text(shot);
+ return <div style={{position:'absolute',left:94,top:65,width:1630,opacity:entering,transform:`translateY(${(1-entering)*30}px)`}}><div style={{fontSize:20,letterSpacing:5,color:accent,fontWeight:900,marginBottom:23}}>{eyebrow}</div><div style={{fontSize:title.length>72?54:title.length>48?65:79,fontWeight:900,lineHeight:1.08,letterSpacing:-1.7,maxWidth:1520}}>{title}</div><div style={{marginTop:24,height:4,width:180,background:accent}}/></div>;
+};
+const V7Card=({children,accent,active=false,style={}})=><div style={{borderRadius:24,padding:35,background:active?'rgba(24,46,65,.95)':'rgba(13,26,41,.88)',border:`2px solid ${active?accent:V7Palette.edge}`,boxShadow:active?'0 22px 65px rgba(0,0,0,.30)':'0 10px 32px rgba(0,0,0,.18)',...style}}>{children}</div>;
+const V7Flow=({shot,accent})=>{
+ const frame=useCurrentFrame();const {fps}=useVideoConfig();const {extras}=V7Text(shot);
+ const labels=extras.length>=2?extras:['ENTRADA','PROCESO','RESULTADO'];
+ const active=Math.min(labels.length-1,Math.floor(frame/Math.max(1,shot.durationFrames)*labels.length));
+ return <V7Canvas shot={shot} accent={accent}><V7Header shot={shot} accent={accent} eyebrow="PROCESO · EXPLICACIÓN VISUAL"/><div style={{position:'absolute',top:390,left:88,right:88,display:'flex',alignItems:'center',gap:14}}>{labels.map((label,i)=>{
+ const enter=spring({frame:Math.max(0,frame-i*fps*.28),fps,config:{damping:18,stiffness:92}});
+ return <React.Fragment key={i}><V7Card accent={accent} active={i===active} style={{flex:1,minWidth:0,height:270,opacity:enter,transform:`translateY(${(1-enter)*35}px)`,display:'flex',flexDirection:'column',justifyContent:'space-between'}}><div style={{fontSize:26,color:accent,fontWeight:900}}>0{i+1}</div><div style={{fontSize:Math.min(39,labels.length>3?29:35),lineHeight:1.14,fontWeight:850,overflowWrap:'break-word'}}>{label}</div><div style={{height:5,width:i<=active?'100%':'24%',background:accent,transition:'none'}}/></V7Card>{i<labels.length-1?<svg width="48" height="46" viewBox="0 0 48 46"><path d="M2 23h36m-12-11 13 11-13 11" stroke={accent} strokeWidth="5" fill="none" strokeLinecap="round"/></svg>:null}</React.Fragment>
+ })}</div></V7Canvas>;
+};
+const V7Interface=({shot,accent})=>{
+ const frame=useCurrentFrame();const {fps}=useVideoConfig();const {extras}=V7Text(shot);const options=extras.length?extras:['ANÁLISIS','VALIDACIÓN','APLICACIÓN'];const active=Math.floor(frame/Math.max(1,shot.durationFrames)*options.length);
+ const enter=spring({frame,fps,config:{damping:21,stiffness:86}});
+ return <V7Canvas shot={shot} accent={accent}><V7Header shot={shot} accent={accent} eyebrow="INTERFAZ · DEMOSTRACIÓN"/><div style={{position:'absolute',left:125,right:125,top:325,height:575,borderRadius:30,overflow:'hidden',border:'2px solid rgba(165,222,250,.30)',background:'rgba(7,17,30,.95)',boxShadow:'0 38px 95px rgba(0,0,0,.5)',transform:`translateY(${(1-enter)*42}px) scale(${.98+.02*enter})`}}><div style={{height:65,background:'#172839',display:'flex',alignItems:'center',gap:12,padding:'0 27px'}}>{['#ff6976','#ffcc66','#68dcaa'].map(color=><div key={color} style={{height:16,width:16,borderRadius:'50%',background:color}}/>)}<div style={{color:'#a5bece',fontSize:19,marginLeft:35}}>WORKSPACE / LIVE SYSTEM</div></div><div style={{display:'flex',height:505}}><div style={{width:255,background:'#0e1c2a',padding:26,display:'flex',flexDirection:'column',gap:20}}>{options.map((x,i)=><div key={i} style={{padding:'20px 16px',borderRadius:12,background:i===active?'rgba(54,212,232,.19)':'transparent',borderLeft:`5px solid ${i===active?accent:'transparent'}`,fontSize:20,fontWeight:700,color:i===active?'white':'#7d97aa'}}>{V7Short(x,18)}</div>)}</div><div style={{flex:1,padding:45}}><div style={{fontSize:24,color:accent,letterSpacing:3,fontWeight:800,marginBottom:29}}>ACTIVIDAD DEL SISTEMA</div><div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:20}}>{options.slice(0,3).map((x,i)=><V7Card key={i} accent={accent} active={i===active} style={{padding:25,height:170}}><div style={{fontSize:19,color:'#9db4c7'}}>MÓDULO 0{i+1}</div><div style={{fontSize:27,fontWeight:800,marginTop:25}}>{V7Short(x,21)}</div></V7Card>)}</div><div style={{marginTop:32,display:'flex',alignItems:'end',gap:15,height:125}}>{[.36,.64,.42,.82,.55,.95,.69,.48,.88,.73,.57,.94].map((v,i)=><div key={i} style={{width:56,height:`${Math.max(9,v*(.24+.76*Math.min(1,frame/(fps*(.7+i*.07)))))*100}%`,borderRadius:8,background:i===active?accent:'rgba(78,154,196,.55)'}}/>)}</div></div></div></div></V7Canvas>;
+};
+const V7Comparison=({shot,accent})=>{
+ const frame=useCurrentFrame();const {fps}=useVideoConfig();const {extras}=V7Text(shot);const a=extras[0]||'SITUACIÓN INICIAL',b=extras[1]||'ALTERNATIVA';
+ return <V7Canvas shot={shot} accent={accent}><V7Header shot={shot} accent={accent} eyebrow="COMPARACIÓN · DOS PERSPECTIVAS"/><div style={{position:'absolute',top:360,left:98,right:98,bottom:145,display:'grid',gridTemplateColumns:'1fr 1fr',gap:34}}>{[a,b].map((v,i)=>{const p=spring({frame:Math.max(0,frame-i*fps*.36),fps,config:{damping:19,stiffness:85}});const color=i===0?V7Palette.gold:V7Palette.lime;return <V7Card key={i} active accent={color} style={{opacity:p,transform:`translateY(${(1-p)*65}px)`,display:'flex',flexDirection:'column',justifyContent:'space-between'}}><div style={{fontSize:27,letterSpacing:4,color,fontWeight:900}}>{i===0?'A · PRIMER ENFOQUE':'B · SEGUNDO ENFOQUE'}</div><div style={{fontSize:53,lineHeight:1.14,fontWeight:900}}>{V7Short(v,72)}</div><div style={{height:8,width:'70%',borderRadius:12,background:color}}/></V7Card>})}</div></V7Canvas>;
+};
+const V7Risk=({shot,accent})=>{
+ const frame=useCurrentFrame();const {fps}=useVideoConfig();const {extras}=V7Text(shot);const labels=extras.length>=2?extras:['INFORMACIÓN','EXPOSICIÓN','PROTECCIÓN'];
+ return <V7Canvas shot={shot} accent={accent}><V7Header shot={shot} accent={accent} eyebrow="RIESGOS · FLUJO DE INFORMACIÓN"/><div style={{position:'absolute',left:150,right:150,top:395,display:'flex',gap:20,alignItems:'center'}}>{labels.map((item,i)=>{const p=spring({frame:Math.max(0,frame-fps*.25*i),fps,config:{damping:17,stiffness:95}});return <React.Fragment key={i}><V7Card accent={i===1?V7Palette.pink:V7Palette.cyan} active={i===1} style={{height:295,flex:1,textAlign:'center',opacity:p,transform:`scale(${.84+.16*p})`}}><div style={{fontSize:90,fontWeight:900,color:i===1?V7Palette.pink:V7Palette.cyan}}>{['◉','!','✓'][i%3]}</div><div style={{fontSize:29,fontWeight:850,lineHeight:1.15,marginTop:22}}>{V7Short(item,38)}</div></V7Card>{i<labels.length-1?<div style={{fontSize:55,color:accent}}>→</div>:null}</React.Fragment>})}</div><div style={{position:'absolute',left:190,bottom:130,right:190,display:'flex',justifyContent:'center',gap:16}}>{labels.map((_,i)=><div key={i} style={{height:8,flex:1,borderRadius:15,background:frame/(fps*1.6)>i/labels.length?accent:'#31445a'}}/>)}</div></V7Canvas>;
+};
+const V7Concept=({shot,accent})=>{
+ const frame=useCurrentFrame();const {fps}=useVideoConfig();const {extras}=V7Text(shot);const items=extras.length?extras:[V7Clean(shot?.visualIdea)||'Idea principal'];
+ const variants=['FUNDAMENTO','CONTEXTO','IMPACTO'];
+ return <V7Canvas shot={shot} accent={accent}><V7Header shot={shot} accent={accent} eyebrow="CONTEXTO · IDEA VISUAL"/><div style={{position:'absolute',top:367,left:110,right:110,bottom:155,display:'grid',gridTemplateColumns:'1.2fr 1fr',gap:42}}><V7Card accent={accent} active style={{display:'flex',alignItems:'center',justifyContent:'center'}}><svg width="480" height="345" viewBox="0 0 480 345"><circle cx="240" cy="172" r="138" fill="none" stroke={accent} strokeWidth="4" opacity=".40"/><circle cx="240" cy="172" r="105" fill="none" stroke={accent} strokeWidth="3" opacity=".27"/><circle cx="240" cy="172" r={40+Math.min(1,frame/(fps*1.5))*35} fill={accent} opacity=".23"/><circle cx="240" cy="172" r="27" fill={accent}/>{[0,1,2,3,4,5].map((_,i)=>{const theta=i*Math.PI/3;return <g key={i}><line x1="240" y1="172" x2={240+138*Math.cos(theta)} y2={172+138*Math.sin(theta)} stroke={accent} strokeWidth="4" opacity=".7"/><circle cx={240+138*Math.cos(theta)} cy={172+138*Math.sin(theta)} r="13" fill="#111b2b" stroke={accent} strokeWidth="5"/></g>})}</svg></V7Card><div style={{display:'flex',flexDirection:'column',gap:17,justifyContent:'center'}}>{items.slice(0,3).map((item,i)=>{const p=spring({frame:Math.max(0,frame-i*fps*.22),fps,config:{damping:20,stiffness:90}});return <V7Card key={i} accent={accent} active={i===0} style={{opacity:p,transform:`translateX(${(1-p)*55}px)`}}><div style={{fontSize:19,color:accent,letterSpacing:3,fontWeight:900}}>{variants[i]}</div><div style={{fontSize:31,lineHeight:1.22,fontWeight:790,marginTop:12}}>{V7Short(item,75)}</div></V7Card>})}</div></div></V7Canvas>;
+};
+const V7ShotRenderer=({shot})=>{
+  const kind=String(shot?.semanticGroup||shot?.template||'generic').toLowerCase();
+  const template=String(shot?.template||'').toLowerCase();
+  const accent=V7Theme(shot);
+  if(shot?.sceneId==='S0'||template==='logic_hook')return <LogicHookStage shot={shot}/>;
+  const {source,image}=pickMedia(shot);
+  if(source||image)return <V6PhotoStory shot={shot}/>;
+  if(/cta/.test(kind)||/cta/.test(template))return <V6CallToAction shot={shot}/>;
+  if(/comparison/.test(kind)||/comparison/.test(template))return <V7Comparison shot={shot} accent={accent}/>;
+  if(/privacy|risk|security/.test(kind)||/privacy|risk/.test(template))return <V7Risk shot={shot} accent={accent}/>;
+  if(/ui_explainer|interface/.test(kind)||/ui_explainer/.test(template))return <V7Interface shot={shot} accent={accent}/>;
+  if(/reason|logic|process|diagram/.test(kind)||/reason/.test(template))return <V7Flow shot={shot} accent={accent}/>;
+  return <V7Concept shot={shot} accent={accent}/>;
+};
