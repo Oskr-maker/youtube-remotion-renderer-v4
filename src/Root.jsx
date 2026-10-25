@@ -736,4 +736,119 @@ const V7ShotRenderer=({shot})=>{
 };
 
 // V8 dispatch: the active Composition calls this renderer. S0 remains byte-for-byte LogicHookStage.
-const V8ShotRenderer = ({shot}) => <V7ShotRenderer shot={shot}/>;
+// ================================================================
+// V9 SEMANTIC EDITORIAL RENDERER
+// Compatible con V6.9: timelineShots[].editorialVisualBrief
+// S0 permanece en LogicHookStage, sin modificación.
+// Los objetos semánticos no se presentan como hechos comprobados:
+// cuando la narración no está disponible son rótulos conceptuales.
+// ================================================================
+
+const V9Names = {
+  calendar: 'Calendario', dates: 'Fechas', logic_clues: 'Pistas',
+  private_data: 'Datos privados', sharing_boundary: 'Punto de exposición',
+  risk_signal: 'Señal de riesgo', option_a: 'Opción A', option_b: 'Opción B',
+  criteria: 'Criterios', claim: 'Afirmación', evidence: 'Evidencia',
+  verification: 'Comprobación', input_variable: 'Variable inicial',
+  changed_condition: 'Cambio de condición', new_result: 'Nuevo resultado',
+  user_question: 'Pregunta', ai_answer: 'Respuesta de IA',
+  human_review: 'Revisión humana', clue: 'Pista', reasoning: 'Deducción',
+  conclusion: 'Conclusión', subject: 'Situación', action: 'Acción',
+  result: 'Resultado'
+};
+const V9Text = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
+const V9Label = (v) => V9Names[V9Text(v)] || V9Text(v).replace(/[_-]/g, ' ');
+const V9Safe = (v, max=80) => {
+  const x=V9Text(v);
+  return x.length>max ? x.slice(0,max-1).trim()+'…' : x;
+};
+const V9Data = (shot) => {
+  const b=shot?.editorialVisualBrief;
+  if (!b || typeof b!=='object' || !b.concept || b.shotId!==shot?.shotId) return null;
+  const objects=Array.isArray(b.objects)?b.objects.filter(Boolean).slice(0,4):[];
+  const headline=V9Text(shot?.textElements?.[0]) || V9Text(shot?.sceneTitle);
+  const excerpt=V9Text(b.voiceoverExcerpt);
+  return {...b, objects, headline, excerpt};
+};
+
+const V9Tag = ({children, accent}) => <div style={{fontSize:20,letterSpacing:3,fontWeight:850,color:accent,textTransform:'uppercase'}}>{children}</div>;
+
+const V9Frame = ({shot,brief,accent,children,eyebrow}) => {
+  const frame=useCurrentFrame();const {fps}=useVideoConfig();
+  const reveal=spring({frame,fps,config:{damping:18,stiffness:75}});
+  const headline=V9Safe(brief.headline||shot?.sceneTitle||'Explicación visual',100);
+  return <V7Canvas shot={shot} accent={accent}>
+    <div style={{position:'absolute',left:100,right:100,top:67,opacity:reveal,transform:`translateY(${(1-reveal)*25}px)`}}>
+      <V9Tag accent={accent}>{eyebrow}</V9Tag>
+      <div style={{fontSize:headline.length>70?50:headline.length>46?62:77,fontWeight:900,letterSpacing:-1.5,lineHeight:1.1,marginTop:16,maxWidth:1670}}>{headline}</div>
+    </div>
+    {children}
+    {brief.excerpt && brief.contextFromNarration && <div style={{position:'absolute',left:110,right:110,bottom:82,fontSize:25,color:'#bdd1e0',lineHeight:1.2}}>{V9Safe(brief.excerpt,125)}</div>}
+  </V7Canvas>;
+};
+
+const V9Node = ({label,index,accent,active,frame,fps,small=false}) => {
+  const enter=spring({frame:Math.max(0,frame-index*fps*.26),fps,config:{damping:18,stiffness:85}});
+  const color=active?accent:'#99b1c6';
+  return <div style={{flex:1,minWidth:0,minHeight:225,borderRadius:26,padding:27,background:active?'rgba(27,48,65,.96)':'rgba(11,25,39,.94)',border:`2px solid ${active?accent:'rgba(255,255,255,.16)'}`,boxShadow:active?'0 14px 70px rgba(0,0,0,.32)':'none',transform:`translateY(${(1-enter)*42}px)`,opacity:enter,display:'flex',flexDirection:'column',justifyContent:'space-between'}}>
+    <div style={{fontSize:24,fontWeight:900,color,letterSpacing:3}}>{String(index+1).padStart(2,'0')}</div>
+    <div style={{fontSize:small?30:38,fontWeight:850,lineHeight:1.12,overflowWrap:'anywhere'}}>{V9Safe(label,55)}</div>
+    <div style={{height:6,width:active?'100%':'40%',background:color,borderRadius:8,opacity:active?1:.35}}/>
+  </div>;
+};
+
+const V9Process = ({shot,brief,accent}) => {
+  const frame=useCurrentFrame();const {fps}=useVideoConfig();
+  const labels=(brief.objects.length?brief.objects:['claim','evidence','verification']).slice(0,3).map(V9Label);
+  const duration=Math.max(1,Number(shot.durationFrames)||150);
+  const active=Math.min(labels.length-1,Math.floor(frame/duration*labels.length));
+  const eyebrow={calendar_logic:'CALENDARIO · RELACIÓN DE FECHAS',privacy_flow:'PRIVACIDAD · RECORRIDO DE LOS DATOS',verification_steps:'VERIFICACIÓN · PRUEBAS',human_ai_workflow:'IA · SUPERVISIÓN HUMANA',cause_effect:'CAUSA Y EFECTO',reasoning_flow:'RAZONAMIENTO · PASO A PASO'}[brief.diagramType]||'EXPLICACIÓN · SECUENCIA';
+  return <V9Frame shot={shot} brief={brief} accent={accent} eyebrow={eyebrow}>
+    <div style={{position:'absolute',left:105,right:105,top:352,height:400,display:'flex',alignItems:'center',gap:18}}>
+      {labels.map((label,i)=><React.Fragment key={i}><V9Node label={label} index={i} accent={accent} active={i===active} frame={frame} fps={fps}/>{i<labels.length-1&&<div style={{fontSize:55,color:accent,opacity:.75}}>→</div>}</React.Fragment>)}
+    </div>
+  </V9Frame>;
+};
+
+const V9Calendar = ({shot,brief,accent}) => {
+  const frame=useCurrentFrame();const {fps}=useVideoConfig();
+  const day=Math.min(30,Math.floor(frame/Math.max(1,shot.durationFrames)*30)+1);
+  return <V9Frame shot={shot} brief={brief} accent={accent} eyebrow="FECHAS · VISUALIZACIÓN DE PISTAS">
+    <div style={{position:'absolute',left:125,right:125,top:333,bottom:148,display:'grid',gridTemplateColumns:'1.22fr .78fr',gap:36}}>
+      <div style={{borderRadius:28,padding:28,border:'2px solid rgba(255,255,255,.16)',background:'rgba(12,26,41,.95)'}}>
+        <V9Tag accent={accent}>CALENDARIO DE REFERENCIA</V9Tag>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:12,marginTop:26}}>{Array.from({length:28},(_,i)=><div key={i} style={{height:64,borderRadius:13,border:`2px solid ${i+1===day?accent:'rgba(255,255,255,.09)'}`,background:i+1===day?'rgba(102,228,181,.22)':'rgba(255,255,255,.035)',display:'grid',placeItems:'center',fontSize:27,fontWeight:800,color:i+1===day?accent:'#bfd0dd'}}>{i+1}</div>)}</div>
+      </div>
+      <div style={{display:'flex',flexDirection:'column',justifyContent:'center',gap:24}}>{['Fechas','Relaciones','Pistas'].map((x,i)=><V9Node key={x} label={x} index={i} accent={accent} active={i===Math.min(2,Math.floor(frame/Math.max(1,shot.durationFrames)*3))} frame={frame} fps={fps} small/>)}</div>
+    </div>
+  </V9Frame>;
+};
+
+const V9Comparison = ({shot,brief,accent}) => {
+  const frame=useCurrentFrame();const {fps}=useVideoConfig();
+  const objects=brief.objects.map(V9Label);
+  return <V9Frame shot={shot} brief={brief} accent={accent} eyebrow="COMPARACIÓN · CRITERIOS">
+    <div style={{position:'absolute',left:105,right:105,top:348,height:405,display:'grid',gridTemplateColumns:'1fr 1fr',gap:35}}>
+      {(objects.length>=2?objects:['Opción A','Opción B']).slice(0,2).map((name,i)=><div key={i} style={{background:'rgba(14,27,44,.96)',border:`2px solid ${i===0?accent:V7Palette.lime}`,borderRadius:28,padding:47,opacity:spring({frame:Math.max(0,frame-i*fps*.3),fps,config:{damping:19,stiffness:78}})}}><V9Tag accent={i===0?accent:V7Palette.lime}>ALTERNATIVA {i===0?'A':'B'}</V9Tag><div style={{fontSize:63,fontWeight:900,marginTop:82,lineHeight:1.08}}>{V9Safe(name,54)}</div></div>)}
+    </div>
+    <div style={{position:'absolute',left:125,right:125,top:792,fontSize:28,color:'#afc6d4'}}>Criterio de evaluación: {V9Safe(objects[2]||'Comparar las evidencias',65)}</div>
+  </V9Frame>;
+};
+
+const V9Semantic = ({shot,brief}) => {
+  const accent=V7Theme({...shot,semanticGroup:brief.graphicIntent||shot.semanticGroup});
+  if(brief.diagramType==='calendar_logic') return <V9Calendar shot={shot} brief={brief} accent={accent}/>;
+  if(brief.diagramType==='side_by_side') return <V9Comparison shot={shot} brief={brief} accent={accent}/>;
+  return <V9Process shot={shot} brief={brief} accent={accent}/>;
+};
+
+// Punto único de entrada: el Composition existente ya llama V8ShotRenderer.
+// Se mantienen intactas la ruta V4, las escenas S0 y las rutas legacy.
+const V8ShotRenderer = ({shot}) => {
+  if(shot?.sceneId==='S0'||shot?.locked===true||shot?.preserveExistingRenderer===true) return <LogicHookStage shot={shot}/>;
+  const {source,image}=pickMedia(shot);
+  if(source||image) return <V6PhotoStory shot={shot}/>;
+  const brief=V9Data(shot);
+  if(brief) return <V9Semantic shot={shot} brief={brief}/>;
+  return <V7ShotRenderer shot={shot}/>;
+};
