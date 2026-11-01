@@ -1214,6 +1214,8 @@ const V11Diagram = ({shot,brief}) => {
 const V121Workflow = ({shot,brief}) => {
  const frame=useCurrentFrame(), duration=Math.max(1,Number(shot?.durationFrames)||180);
  const stage=Math.min(2,Math.floor(frame/duration*3));
+ const stageProgress=(frame/duration*3)-stage;
+ const cursor=interpolate(stageProgress,[0,.65,1],[0,1,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
  const data=[
   {k:'01 · ENTRADA',t:'SOLICITUD',lines:['Asunto: nueva tarea','Estado: recibida','Bandeja de entrada']},
   {k:'02 · TRATAMIENTO',t:'CLASIFICACIÓN',lines:['Identificar la tarea','Organizar información','Preparar una salida']},
@@ -1225,10 +1227,10 @@ const V121Workflow = ({shot,brief}) => {
   <div style={{position:'absolute',top:132,left:92,fontSize:53,fontWeight:900}}>De una solicitud a una salida revisable</div>
   <div style={{position:'absolute',top:302,left:90,right:90,display:'flex',alignItems:'center',gap:27}}>
    {data.map((x,i)=><React.Fragment key={i}>
-    <div style={{flex:1,height:490,padding:29,borderRadius:18,background:i===2?'#e4f3ec':'#f0f4f7',color:'#183747',opacity:i<=stage?1:.25,transform:'translateY('+(i===stage?-18:0)+'px)',border:i===stage?'6px solid #66dfcb':'6px solid transparent'}}>
+    <div style={{flex:1,height:490,padding:29,borderRadius:18,background:i===2?'#e4f3ec':'#f0f4f7',color:'#183747',opacity:i<=stage?1:.16,transform:'translateY('+(i===stage?-18-10*Math.sin(stageProgress*Math.PI):0)+'px)',border:i===stage?'6px solid #66dfcb':'6px solid transparent'}}>
      <div style={{fontSize:21,fontWeight:900,color:'#5d7e8e'}}>{x.k}</div>
      <div style={{fontSize:34,fontWeight:900,marginTop:43}}>{x.t}</div>
-     {x.lines.map((line,n)=><div key={n} style={{fontSize:24,marginTop:26,paddingBottom:12,borderBottom:'1px solid #c4d4db'}}>{line}</div>)}
+     {x.lines.map((line,n)=><div key={n} style={{fontSize:24,marginTop:26,paddingBottom:12,borderBottom:'1px solid #c4d4db',opacity:i<stage||n/3<cursor?1:.15}}>{line}</div>)}
     </div>
     {i<2&&<div style={{fontSize:57,color:'#66dfcb',fontWeight:900,opacity:stage>i?1:.25}}>→</div>}
    </React.Fragment>)}
@@ -1247,14 +1249,14 @@ const V121Prompt = ({shot,brief}) => {
   <div style={{position:'absolute',left:92,top:126,fontSize:52,fontWeight:900}}>Una instrucción mejora al añadir contexto</div>
   <div style={{position:'absolute',left:92,top:280,width:1100,bottom:135,borderRadius:20,background:'#f0f4f7',color:'#193546',padding:38}}>
    <div style={{fontSize:25,fontWeight:900,paddingBottom:21,borderBottom:'2px solid #c3d4de'}}>EDITOR DE INSTRUCCIONES · EJEMPLO</div>
-   {sections.map((x,i)=><div key={i} style={{marginTop:28,opacity:stage>=i?1:.16,borderLeft:'6px solid '+(stage===i?'#159b89':'#c1d3df'),paddingLeft:22}}>
-    <div style={{fontSize:18,fontWeight:900,color:'#398074',letterSpacing:2}}>{x[0]}</div><div style={{fontSize:28,fontWeight:760,marginTop:8}}>{x[1]}</div>
+   {sections.map((x,i)=><div key={i} style={{marginTop:28,opacity:stage>i?1:stage===i?.4+.6*cursor:.12,borderLeft:'6px solid '+(stage===i?'#159b89':'#c1d3df'),paddingLeft:22}}>
+    <div style={{fontSize:18,fontWeight:900,color:'#398074',letterSpacing:2}}>{x[0]}</div><div style={{fontSize:28,fontWeight:760,marginTop:8}}>{stage===i?x[1].slice(0,Math.max(1,Math.round(x[1].length*cursor))):x[1]}</div>
    </div>)}
    <div style={{position:'absolute',bottom:30,left:38,right:38,background:'#d9eae6',padding:17,borderRadius:9,fontWeight:800,fontSize:23}}>Instrucción en construcción · revisión necesaria</div>
   </div>
   <div style={{position:'absolute',right:90,top:340,width:540,padding:30,background:'#16384b',border:'1px solid #4a7688',borderRadius:18}}>
    <div style={{fontSize:22,fontWeight:900,color:'#a1d7d9'}}>VISTA DEL RESULTADO</div>
-   <div style={{fontSize:33,fontWeight:900,marginTop:27}}>{stage===0?'Petición general':stage===1?'Contexto definido':'Estructura solicitada'}</div>
+   <div style={{fontSize:33,fontWeight:900,marginTop:27}}>{stage===0?'Petición general':stage===1?'Contexto definido':'Estructura solicitada'}</div><div style={{fontSize:23,color:'#b9f0db',marginTop:26}}>{stage===0?'Falta información':stage===1?'Se especifica el destinatario':'Salida revisable'}</div>
    <div style={{height:12,width:'90%',background:'#4b8095',marginTop:35,borderRadius:8}}/><div style={{height:12,width:'65%',background:'#4b8095',marginTop:19,borderRadius:8}}/>
    <div style={{fontSize:23,color:'#b7d5e0',marginTop:36}}>Vista ilustrativa, no generada por IA</div>
   </div>
