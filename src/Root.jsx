@@ -1209,10 +1209,47 @@ const V11Diagram = ({shot,brief}) => {
  return <V9Semantic shot={shot} brief={brief}/>;
 };
 
+
+/** V12 editorial cut: replace generic single-template shots with 3 contextual beats. */
+const V12EditorialCut = ({shot,brief}) => {
+ const frame=useCurrentFrame();
+ const {fps}=useVideoConfig();
+ const d=Math.max(1,Number(shot?.durationFrames)||150);
+ const beat=Math.min(2,Math.floor(frame/d*3));
+ const {source,image}=pickMedia(shot);
+ const concept=String(brief?.concept||'');
+ const types=Array.isArray(brief?.editorialDetails?.steps)?brief.editorialDetails.steps:[];
+ const steps=types.filter(x=>typeof x==='string'&&x.trim()).slice(0,3);
+ const titles=steps.length>=3?steps:brief?.objects?.length>=3?brief.objects.slice(0,3):['Situación','Acción','Resultado'];
+ const duration=Math.max(1,Math.round(d/3));
+ const localFrame=frame-beat*duration;
+ const fade=interpolate(localFrame,[0,Math.max(1,Math.round(fps*.22))],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+ const accent=V7Theme(shot);
+ const useMedia=(source||image) && (beat!==1 || concept==='sample_feedback');
+ return <AbsoluteFill style={{background:'#071420',fontFamily:FONT,color:'#f8fbff',overflow:'hidden'}}>
+  {useMedia?<V10StockEditorial shot={shot}/>:<AbsoluteFill style={{background:'radial-gradient(circle at 75% 40%,#163a50,#071420 70%)'}}>
+   <Grid opacity={.028}/>
+   <div style={{position:'absolute',left:95,top:72,color:accent,fontSize:21,fontWeight:900,letterSpacing:3}}>DEMOSTRACIÓN · {String(concept).replace(/_/g,' ').toUpperCase()}</div>
+   <div style={{position:'absolute',left:95,top:170,fontSize:48,fontWeight:900,maxWidth:1500}}>Del planteamiento al resultado</div>
+   <div style={{position:'absolute',left:95,right:95,top:300,bottom:140,background:'#f3f6f8',borderRadius:22,padding:48,color:'#153045',boxShadow:'0 22px 70px #0007'}}>
+    <div style={{fontSize:21,color:'#628296',fontWeight:900,letterSpacing:2}}>DOCUMENTO DE TRABAJO · EJEMPLO</div>
+    <div style={{marginTop:35,fontSize:50,fontWeight:900,maxWidth:1300}}>{String(titles[beat]||titles[0]).slice(0,86)}</div>
+    <div style={{marginTop:47,width:'83%',height:18,borderRadius:9,background:'#b2cbd8'}}/><div style={{marginTop:23,width:'62%',height:18,borderRadius:9,background:'#d0dfe7'}}/>
+    <div style={{marginTop:42,fontSize:22,color:'#617c8b'}}>Contenido ilustrativo, no documento real</div>
+   </div>
+  </AbsoluteFill>}
+  <div style={{position:'absolute',left:73,bottom:67,opacity:fade,background:'rgba(5,17,29,.88)',borderLeft:'5px solid '+accent,padding:'15px 22px',borderRadius:9,maxWidth:950}}>
+   <div style={{color:accent,fontSize:16,letterSpacing:2,fontWeight:900}}>ETAPA {beat+1} / 3</div>
+   <div style={{fontSize:29,fontWeight:850,marginTop:6}}>{String(titles[beat]||titles[0]).slice(0,95)}</div>
+  </div>
+ </AbsoluteFill>;
+};
+
 const V8ShotRenderer = ({shot}) => {
   if(shot?.sceneId==='S0'||shot?.locked===true||shot?.preserveExistingRenderer===true) return <LogicHookStage shot={shot}/>;
   const {source,image}=pickMedia(shot);
   const brief=V9Data(shot);
+  if(brief?.semanticGroundingVerified===true && shot?.editorialTreatment==='contextual_cut_v12' && String(brief.concept||'')!=='effort_cost') return <V12EditorialCut shot={shot} brief={brief}/>;
   if((source||image) && brief?.semanticGroundingVerified===true && ['sample_feedback','demonstrated_skill','weekly_plan','proposal'].includes(String(brief.concept||''))) return <V116StockStory shot={shot} brief={brief}/>;
   if(source||image) return <V10StockEditorial shot={shot}/>;
   if(brief && brief.semanticGroundingVerified===true && V11Kinds.has(String(brief.diagramType||''))) return <V11Diagram shot={shot} brief={brief}/>;
