@@ -1007,9 +1007,62 @@ const V113EditorialFlow = ({shot,brief}) => {
  </AbsoluteFill>;
 };
 
+
+/**
+ * V11.4 contextual comparison: no invented alternatives.
+ * Displays concrete UI demonstrations only when the
+ * narration explicitly licenses the comparison.
+ */
+const V114Comparison = ({shot,brief}) => {
+ const frame=useCurrentFrame();const {fps}=useVideoConfig();
+ const total=Math.max(1,Number(shot.durationFrames)||150);
+ const norm=v=>String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+ const narration=norm(brief.voiceoverExcerpt);
+ const isPrompt=/prompt|contexto|instrucci[oó]n|formato/.test(narration);
+ const isCheck=/verific|comprob|revis|fuente|fiable|evidencia/.test(narration);
+ const mode=isPrompt?'prompt':isCheck?'verification':'unknown';
+ const progress=Math.min(1,frame/total);
+ const enter=(at)=>interpolate(progress,[at,Math.min(.99,at+.19)],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+ const accent=V7Theme(shot);
+ const leftTitle=mode==='prompt'?'PETICIÓN IMPRECISA':mode==='verification'?'SIN CONTRASTAR':'CRITERIO NO ESPECIFICADO';
+ const rightTitle=mode==='prompt'?'PETICIÓN CON CONTEXTO':mode==='verification'?'CON COMPROBACIÓN':'REQUIERE UN EJEMPLO';
+ const leftLine=mode==='prompt'?'«Escribe un texto»':mode==='verification'?'Una respuesta sin comprobar':'La narración no define las alternativas';
+ const rightLines=mode==='prompt'?['Objetivo del texto','Público destinatario','Formato esperado']:mode==='verification'?['Identificar la afirmación','Consultar una fuente','Revisar antes de usar']:['No inventar una opción','Esperar datos narrativos','Mantener el contexto'];
+ const right=enter(.24); const finished=enter(.65);
+ return <AbsoluteFill style={{background:'radial-gradient(circle at 65% 30%,#132b42,#06111b 66%)',color:'#f7fafd',fontFamily:FONT,overflow:'hidden'}}>
+  <Grid opacity={.035}/>
+  <div style={{position:'absolute',top:60,left:100,fontSize:21,color:accent,letterSpacing:4,fontWeight:900}}>COMPARACIÓN CON CONTEXTO</div>
+  <div style={{position:'absolute',top:113,left:100,right:100,fontSize:49,fontWeight:900}}>La diferencia está en el método</div>
+  <div style={{position:'absolute',left:100,right:100,top:260,bottom:153,display:'grid',gridTemplateColumns:'1fr 1fr',gap:50}}>
+   <div style={{border:'2px solid #795f54',background:'#111e2b',borderRadius:24,padding:36,opacity:enter(0),transform:`translateX(${(1-enter(0))*-40}px)`}}>
+    <div style={{fontSize:23,color:'#f2b18c',fontWeight:850,letterSpacing:2}}>{leftTitle}</div>
+    <div style={{background:'#e9eff4',borderRadius:16,marginTop:30,padding:35,height:365,color:'#1b3145',boxShadow:'0 22px 50px #0005'}}>
+     <div style={{fontSize:18,fontWeight:800,marginBottom:34,color:'#6a8193'}}>ENTRADA · EJEMPLO ILUSTRATIVO</div>
+     <div style={{fontSize:32,fontWeight:850,lineHeight:1.3}}>{leftLine}</div>
+     <div style={{height:8,background:'#c6d2dc',borderRadius:8,width:'85%',marginTop:35}}/>
+     <div style={{height:8,background:'#c6d2dc',borderRadius:8,width:'60%',marginTop:18}}/>
+    </div>
+   </div>
+   <div style={{border:`2px solid ${accent}`,background:'#10283b',borderRadius:24,padding:36,opacity:right,transform:`translateX(${(1-right)*42}px)`}}>
+    <div style={{fontSize:23,color:'#7eeac6',fontWeight:850,letterSpacing:2}}>{rightTitle}</div>
+    <div style={{background:'#e9eff4',borderRadius:16,marginTop:30,padding:33,height:365,color:'#1b3145',boxShadow:'0 22px 50px #0005'}}>
+     <div style={{fontSize:18,fontWeight:800,marginBottom:26,color:'#6a8193'}}>PROCEDIMIENTO · DEMOSTRACIÓN</div>
+     {rightLines.map((line,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:20,marginBottom:22,opacity:enter(.32+i*.12)}}>
+       <span style={{width:43,height:43,borderRadius:12,display:'grid',placeItems:'center',background:i===2?'#107e65':'#d5e4ee',fontSize:25,color:i===2?'#fff':'#315a70',fontWeight:900}}>{i===2?'✓':i+1}</span>
+       <span style={{fontSize:27,fontWeight:800}}>{line}</span>
+      </div>)}
+    </div>
+   </div>
+  </div>
+  <div style={{position:'absolute',left:100,bottom:65,fontSize:22,color:'#a6bfce'}}>ESQUEMA ILUSTRATIVO · NO ES UNA COMPROBACIÓN REAL</div>
+  {finished>0&&<div style={{position:'absolute',right:100,bottom:61,fontSize:23,fontWeight:850,color:'#8de9c6',opacity:finished}}>CONTEXTO Y REVISIÓN</div>}
+ </AbsoluteFill>;
+};
+
 const V11Diagram = ({shot,brief}) => {
  const kind=String(brief?.diagramType||'');
  if(kind==='verification_steps')return <V112Verification shot={shot} brief={brief}/>;
+ if(kind==='side_by_side'||kind==='cost_decision')return <V114Comparison shot={shot} brief={brief}/>;
  if(['privacy_flow','side_by_side','cost_decision','workflow_flow','service_deliverable','active_learning','prompt_structure'].includes(kind))return <V113EditorialFlow shot={shot} brief={brief}/>;
  // Other diagram families retain the existing verified V9 rendering until
  // their own scene-specific visual treatments have been implemented.
