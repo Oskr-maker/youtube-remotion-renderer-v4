@@ -911,7 +911,7 @@ const V10StockEditorial = ({shot}) => {
  */
 const V11Clean = v => String(v ?? '').replace(/[_-]+/g,' ').replace(/\\s+/g,' ').trim();
 const V11Unique = xs => [...new Set(safeArray(xs).map(V11Clean).filter(Boolean))];
-const V11Kinds = new Set(['verification_steps','privacy_flow','prompt_structure','active_learning','service_deliverable','workflow_flow','side_by_side','weekly_plan','cost_decision','cause_effect','human_ai_workflow','reasoning_flow','calendar_logic','document_draft_review','step_flow']);
+const V11Kinds = new Set(['verification_steps','privacy_flow','prompt_structure','active_learning','service_deliverable','workflow_flow','side_by_side','weekly_plan','cost_decision','cause_effect','human_ai_workflow','reasoning_flow','calendar_logic','document_draft_review','step_flow','weekly_plan']);
 
 /**
  * V11.2: Evidence-led verification scene.
@@ -1059,9 +1059,39 @@ const V114Comparison = ({shot,brief}) => {
  </AbsoluteFill>;
 };
 
+
+/**
+ * V11.5: narration-aligned weekly planning board.
+ * A specific editorial scene, not three generic numbered cards.
+ */
+const V115WeeklyPlan = ({shot,brief}) => {
+ const frame=useCurrentFrame();const {fps}=useVideoConfig();
+ const total=Math.max(1,Number(shot.durationFrames)||150);
+ const p=Math.min(1,frame/total);
+ const reveal=(v)=>interpolate(p,[v,Math.min(.98,v+.14)],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+ const accent=V7Theme(shot);
+ const tasks=Array.isArray(brief?.editorialDetails?.steps) && brief.editorialDetails.steps.length>=2
+  ? brief.editorialDetails.steps.slice(0,4)
+  : ['Definir una tarea','Preparar un ejemplo','Revisar el resultado','Guardar una muestra'];
+ return <AbsoluteFill style={{background:'linear-gradient(130deg,#07111e,#13283b)',fontFamily:FONT,color:'#f3faff'}}>
+  <Grid opacity={.032}/>
+  <div style={{position:'absolute',left:94,top:58,color:accent,fontSize:22,fontWeight:900,letterSpacing:4}}>PLAN DE ACCIÓN</div>
+  <div style={{position:'absolute',left:94,top:113,fontSize:51,fontWeight:900}}>De una idea a tareas verificables</div>
+  <div style={{position:'absolute',left:94,right:94,top:256,bottom:135,background:'#ebf1f5',color:'#182d3d',borderRadius:23,padding:32,boxShadow:'0 25px 75px #0008'}}>
+   <div style={{display:'flex',justifyContent:'space-between',borderBottom:'3px solid #c4d5df',paddingBottom:22,fontWeight:900,fontSize:27}}><span>TABLERO DE TRABAJO · EJEMPLO</span><span>REVISIÓN HUMANA</span></div>
+   {tasks.map((task,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:26,marginTop:23,opacity:reveal(.10+i*.19),padding:'15px 24px',borderRadius:13,background:i===Math.min(3,Math.floor(p*4))?'#d4f0e9':'#fff',border:'2px solid #c5d3da'}}>
+    <div style={{width:51,height:51,borderRadius:12,display:'grid',placeItems:'center',background:i<Math.floor(p*4)?'#188b71':'#d1dee6',color:i<Math.floor(p*4)?'#fff':'#45627b',fontSize:29,fontWeight:900}}>{i<Math.floor(p*4)?'✓':i+1}</div>
+    <div style={{fontSize:32,fontWeight:850}}>{String(task).slice(0,76)}</div>
+   </div>)}
+  </div>
+  <div style={{position:'absolute',bottom:55,left:94,fontSize:23,color:'#b5d0df'}}>Secuencia ilustrativa · las tareas requieren validación con el guion</div>
+ </AbsoluteFill>;
+};
+
 const V11Diagram = ({shot,brief}) => {
  const kind=String(brief?.diagramType||'');
  if(kind==='verification_steps')return <V112Verification shot={shot} brief={brief}/>;
+ if(kind==='weekly_plan')return <V115WeeklyPlan shot={shot} brief={brief}/>;
  if(kind==='side_by_side'||kind==='cost_decision')return <V114Comparison shot={shot} brief={brief}/>;
  if(['privacy_flow','side_by_side','cost_decision','workflow_flow','service_deliverable','active_learning','prompt_structure'].includes(kind))return <V113EditorialFlow shot={shot} brief={brief}/>;
  // Other diagram families retain the existing verified V9 rendering until
