@@ -912,54 +912,71 @@ const V10StockEditorial = ({shot}) => {
 const V11Clean = v => String(v ?? '').replace(/[_-]+/g,' ').replace(/\\s+/g,' ').trim();
 const V11Unique = xs => [...new Set(safeArray(xs).map(V11Clean).filter(Boolean))];
 const V11Kinds = new Set(['verification_steps','privacy_flow','prompt_structure','active_learning','service_deliverable','workflow_flow','side_by_side','weekly_plan','cost_decision','cause_effect','human_ai_workflow','reasoning_flow','calendar_logic','document_draft_review','step_flow']);
-const V11Diagram = ({shot,brief}) => {
+
+/**
+ * V11.2: Evidence-led verification scene.
+ * Uses only conceptual, explicitly illustrative examples;
+ * never fabricates a source or asserts a fact was verified.
+ */
+const V112Verification = ({shot,brief}) => {
  const frame=useCurrentFrame();const {fps}=useVideoConfig();
  const total=Math.max(1,Number(shot.durationFrames)||150);
- const concept=V11Clean(brief.concept);
- const diagram=V11Clean(brief.diagramType);
  const accent=V7Theme(shot);
- const objects=V11Unique(brief.objects).slice(0,4);
- const beats=V11Unique(brief.visualBeats).slice(0,4);
- const isCompare=/comparison|side by side|cost decision/.test(diagram+' '+concept);
- const isPrivacy=/privacy/.test(diagram+' '+concept);
- const isVerify=/verification|review/.test(diagram+' '+concept);
- const isCalendar=/calendar|weekly/.test(diagram+' '+concept);
- const phase=Math.min(Math.max(objects.length,2)-1,Math.floor(frame/total*Math.max(objects.length,2)));
- const enter=interpolate(frame,[0,Math.max(1,Math.round(fps*.4))],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
- const supplied=objects.length>=2;
- // Meaningful diagram requires grounded objects. Otherwise preserve old renderer.
- if(!supplied) return <V7ShotRenderer shot={shot}/>;
- const header=isCompare?'COMPARACIÓN':isPrivacy?'PRIVACIDAD':isVerify?'VERIFICACIÓN':isCalendar?'PLAN DE ACCIÓN':'PROCESO';
- const topLine=V11Clean(shot.sceneTitle);
- const twoColumn=isCompare;
- const cellWidth=twoColumn?780:Math.min(480,Math.floor(1510/objects.length)-22);
- const caption=brief.contextFromNarration===true?V11Clean(brief.voiceoverExcerpt):'';
- return <AbsoluteFill style={{background:'radial-gradient(circle at 50% 40%,#10233a 0%,#07101c 48%,#04070d 100%)',fontFamily:FONT,color:'#fff',overflow:'hidden'}}>
-   <Grid opacity={.07}/>
-   <AmbientGlow left="52%" top="56%" color="35,161,230" opacity={.13}/>
-   <div style={{position:'absolute',left:108,top:82,opacity:enter}}>
-     <div style={{color:accent,fontSize:24,letterSpacing:5,fontWeight:850}}>{header}</div>
-     <div style={{fontSize:46,fontWeight:850,marginTop:20,maxWidth:1500,letterSpacing:-1}}>{shortText(topLine,100)}</div>
+ const progress=Math.min(1,Math.max(0,frame/total));
+ const reveal=(at)=>interpolate(frame,[Math.max(0,Math.round(at*total)),Math.max(1,Math.round(at*total+fps*.25))],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+ const first=reveal(0),second=reveal(.28),third=reveal(.63);
+ const zoom=1+Math.min(1,progress)*.055;
+ const note=brief?.contextFromNarration===true?'EJEMPLO ILUSTRATIVO · SIN FUENTES REALES':'DEMOSTRACIÓN CONCEPTUAL';
+ const card={border:'1px solid rgba(205,232,250,.22)',borderRadius:22,background:'linear-gradient(155deg,#172a3b,#0a1523)',boxShadow:'0 22px 70px rgba(0,0,0,.35)'};
+ return <AbsoluteFill style={{fontFamily:FONT,background:'radial-gradient(circle at 54% 30%,#15304a,#060d18 68%)',color:'#f5f9ff',overflow:'hidden'}}>
+  <Grid opacity={.045}/>
+  <div style={{position:'absolute',left:105,top:62,color:accent,fontSize:21,fontWeight:900,letterSpacing:4}}>COMPROBAR UNA RESPUESTA</div>
+  <div style={{position:'absolute',left:105,top:112,fontSize:49,fontWeight:900,maxWidth:1480,lineHeight:1.1}}>De una afirmación a una revisión fundamentada</div>
+  <div style={{position:'absolute',left:105,right:105,top:254,bottom:115,display:'grid',gridTemplateColumns:'1fr .21fr 1fr',gap:30,transform:`scale(${zoom})`,transformOrigin:'center center'}}>
+   <div style={{...card,padding:34,opacity:first,transform:`translateY(${(1-first)*32}px)`}}>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:32}}>
+     <div style={{fontSize:19,letterSpacing:3,color:'#8ac8ee',fontWeight:850}}>01 · RESPUESTA INICIAL</div>
+     <div style={{fontSize:19,color:'#ffc36e',fontWeight:800}}>PENDIENTE</div>
+    </div>
+    <div style={{background:'#e9f1f7',borderRadius:12,padding:'32px 30px',height:'66%',color:'#152b3a',position:'relative'}}>
+     <div style={{fontSize:26,fontWeight:850,marginBottom:24}}>Documento de trabajo</div>
+     <div style={{height:11,background:'#b7cbd9',borderRadius:6,width:'88%',marginBottom:18}}/>
+     <div style={{height:11,background:'#b7cbd9',borderRadius:6,width:'72%',marginBottom:22}}/>
+     <div style={{fontSize:28,fontWeight:850,border:'3px solid #d88c36',background:'#fff4db',padding:'17px 18px',borderRadius:10}}>Afirmación por comprobar</div>
+     <div style={{height:11,background:'#b7cbd9',borderRadius:6,width:'78%',marginTop:25}}/>
+    </div>
    </div>
-   <div style={{position:'absolute',left:90,right:90,top:315,height:480,display:'flex',justifyContent:'center',alignItems:'center',gap:twoColumn?48:24}}>
-     {objects.map((label,i)=>{
-       const active=i===phase;
-       const t=spring({frame:Math.max(0,frame-Math.round(i*fps*.24)),fps,config:{damping:21,stiffness:88}});
-       return <React.Fragment key={i}>
-         <div style={{position:'relative',width:cellWidth,height:twoColumn?345:300,padding:'30px 27px',borderRadius:25,background:active?'linear-gradient(155deg,#18374f,#0b192a)':'linear-gradient(155deg,#111d2d,#091422)',border:`2px solid ${active?accent:'rgba(190,218,240,.24)'}`,boxShadow:active?'0 28px 85px rgba(0,0,0,.38)':'0 20px 60px rgba(0,0,0,.18)',opacity:t,transform:`translateY(${(1-t)*38}px)`,display:'flex',flexDirection:'column',justifyContent:'space-between'}}>
-           <div style={{fontSize:26,color:active?accent:'#8fa9bc',fontWeight:900,letterSpacing:3}}>{String(i+1).padStart(2,'0')}</div>
-           <div style={{fontSize:twoColumn?47:objects.length>3?30:36,lineHeight:1.12,fontWeight:850,overflowWrap:'anywhere'}}>{shortText(label,65)}</div>
-           <div style={{height:7,width:active?'100%':'24%',borderRadius:8,background:active?accent:'#546b7b'}}/>
-         </div>
-         {i<objects.length-1 && !twoColumn && <div style={{fontSize:48,color:accent,opacity:active?.95:.35,fontWeight:700}}>→</div>}
-       </React.Fragment>;
-     })}
+   <div style={{display:'flex',justifyContent:'center',alignItems:'center',flexDirection:'column',gap:24,opacity:second}}>
+    <div style={{height:88,width:88,borderRadius:44,background:'#153449',border:`3px solid ${accent}`,display:'grid',placeItems:'center',fontSize:48}}>⌕</div>
+    <div style={{fontSize:22,fontWeight:850,color:'#b8deec',textAlign:'center'}}>CONTRASTAR</div>
+    <div style={{fontSize:62,color:accent}}>→</div>
    </div>
-   {beats.length>0 && <div style={{position:'absolute',left:112,right:112,bottom:146,fontSize:29,color:'#c9dce9',fontWeight:650}}>{shortText(beats[Math.min(beats.length-1,Math.floor(frame/total*beats.length))],120)}</div>}
-   <div style={{position:'absolute',left:112,right:112,bottom:72,height:5,background:'rgba(255,255,255,.12)',borderRadius:6}}>
-      <div style={{height:'100%',width:`${Math.min(100,(frame+1)/total*100)}%`,background:accent,borderRadius:6}}/>
+   <div style={{...card,padding:34,opacity:second,transform:`translateY(${(1-second)*32}px)`}}>
+    <div style={{fontSize:19,letterSpacing:3,color:'#8ac8ee',fontWeight:850,marginBottom:28}}>02 · REVISIÓN DE FUENTE</div>
+    <div style={{background:'#102437',borderRadius:14,border:'1px solid #36566b',padding:'25px 28px',minHeight:165}}>
+     <div style={{fontSize:22,color:'#b5cde2',marginBottom:17}}>Referencia independiente</div>
+     <div style={{height:9,background:'#5e8095',borderRadius:5,width:'85%',marginBottom:15}}/>
+     <div style={{height:9,background:'#5e8095',borderRadius:5,width:'63%',marginBottom:15}}/>
+     <div style={{fontSize:22,fontWeight:800,color:'#f3ca80'}}>¿Coincide con la afirmación?</div>
+    </div>
+    <div style={{marginTop:28,borderRadius:14,padding:'25px 26px',border:`2px solid ${third?'#36d4a4':'#4b6277'}`,background:third?'rgba(15,93,83,.35)':'rgba(8,25,39,.8)',opacity:third}}>
+     <div style={{fontSize:19,letterSpacing:2,color:'#a2e9d3',fontWeight:900,marginBottom:12}}>03 · REVISIÓN HUMANA</div>
+     <div style={{fontSize:31,fontWeight:900}}>Corregir o confirmar</div>
+     <div style={{fontSize:21,color:'#b7d7d0',marginTop:10}}>Solo después de contrastar la fuente</div>
+    </div>
    </div>
+  </div>
+  <div style={{position:'absolute',left:105,bottom:49,color:'#9fb5c7',fontSize:19,letterSpacing:1}}>{note}</div>
+  <div style={{position:'absolute',right:105,bottom:55,fontSize:24,color:'#d8e7f4',fontWeight:800}}>REVISAR ANTES DE PUBLICAR</div>
  </AbsoluteFill>;
+};
+
+const V11Diagram = ({shot,brief}) => {
+ const kind=String(brief?.diagramType||'');
+ if(kind==='verification_steps')return <V112Verification shot={shot} brief={brief}/>;
+ // Other diagram families retain the existing verified V9 rendering until
+ // their own scene-specific visual treatments have been implemented.
+ return <V9Semantic shot={shot} brief={brief}/>;
 };
 
 const V8ShotRenderer = ({shot}) => {
