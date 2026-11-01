@@ -869,7 +869,7 @@ const V10StockEditorial = ({shot}) => {
    typeof brief.voiceoverExcerpt==='string' &&
    brief.voiceoverExcerpt.trim().length>=15;
  const headline=V10Label(shot?.textElements?.[0]||shot?.sceneTitle);
- const showHeadline=narrationMatched && !V10IsGeneric(headline) &&
+ const showHeadline=narrationMatched && shot?.stockHeadlineApproved===true && !V10IsGeneric(headline) &&
    headline.length>=9 && headline.length<=105;
  const accent=V7Theme(shot);
  const reveal=interpolate(frame,[0,Math.max(1,Math.round(fps*.32))],[0,1],
@@ -1107,11 +1107,11 @@ const V116StockStory = ({shot,brief}) => {
  const active=Math.min(2,Math.floor(progress*3));
  return <AbsoluteFill>
   <V10StockEditorial shot={shot}/>
-  {beats.length>0&&<div style={{position:'absolute',left:75,top:64,width:615,padding:'24px 27px',borderRadius:15,background:'rgba(6,15,26,.81)',border:'1px solid rgba(180,220,245,.3)',fontFamily:FONT,color:'#fff',boxShadow:'0 10px 50px #0006'}}>
-   <div style={{fontSize:19,fontWeight:850,color:accent,letterSpacing:3,marginBottom:16}}>PROCESO EN CONTEXTO</div>
+  {beats.length>0&&<div style={{position:'absolute',left:62,top:58,width:460,padding:'17px 20px',borderRadius:15,background:'rgba(6,15,26,.81)',border:'1px solid rgba(180,220,245,.3)',fontFamily:FONT,color:'#fff',boxShadow:'0 10px 50px #0006'}}>
+   <div style={{fontSize:16,fontWeight:850,color:accent,letterSpacing:2,marginBottom:11}}>PROCESO EN CONTEXTO</div>
    {beats.map((label,i)=>{
     const opacity=interpolate(frame,[Math.round(i*.26*duration),Math.round((i*.26+.12)*duration)],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
-    return <div key={i} style={{opacity,display:'flex',alignItems:'center',gap:17,marginBottom:i===2?0:12,fontSize:23,fontWeight:i===active?900:650,color:i===active?'#fff':'#a7c1d1'}}>
+    return <div key={i} style={{opacity,display:'flex',alignItems:'center',gap:13,marginBottom:i===2?0:9,fontSize:19,fontWeight:i===active?900:650,color:i===active?'#fff':'#a7c1d1'}}>
      <div style={{height:34,width:34,display:'grid',placeItems:'center',borderRadius:8,background:i<=active?accent:'#29445b',color:'#06121d',fontWeight:900,fontSize:19}}>{i+1}</div>
      {label}
     </div>;
@@ -1154,11 +1154,54 @@ const V116WorkDocument = ({shot,brief}) => {
  </AbsoluteFill>;
 };
 
+/**
+ * V11.7 — Decision dashboard grounded in the actual narration.
+ * No numeric costs or profits are invented.
+ */
+const V117CostDecision = ({shot,brief}) => {
+ const frame=useCurrentFrame();
+ const total=Math.max(1,Number(shot?.durationFrames)||150);
+ const progress=Math.min(1,frame/total);
+ const accent=V7Theme(shot);
+ const reveal=at=>interpolate(progress,[at,Math.min(.99,at+.16)],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+ const inputs=[
+  {label:'TIEMPO INVERTIDO',detail:'¿Cuántas horas necesitas?',bar:'.68',color:'#65d0ef'},
+  {label:'COSTES DEL TRABAJO',detail:'¿Qué recursos consumes?',bar:'.47',color:'#f6bf77'},
+  {label:'VALOR DEL SERVICIO',detail:'¿Resuelve un problema?',bar:'.82',color:'#76e1b3'}
+ ];
+ return <AbsoluteFill style={{fontFamily:FONT,background:'linear-gradient(115deg,#08131e,#0f2b39)',color:'#f5f9ff',overflow:'hidden'}}>
+  <Grid opacity={.032}/>
+  <div style={{position:'absolute',left:92,top:61,color:accent,fontSize:21,fontWeight:900,letterSpacing:3}}>DECISIÓN DE VIABILIDAD</div>
+  <div style={{position:'absolute',left:92,top:112,fontSize:52,fontWeight:900}}>¿Merece la pena cobrar por este trabajo?</div>
+  <div style={{position:'absolute',top:242,left:93,right:93,bottom:139,display:'flex',gap:38}}>
+   <div style={{flex:1,background:'#edf3f5',borderRadius:18,padding:'30px 38px',color:'#183345'}}>
+    <div style={{fontSize:22,fontWeight:900,borderBottom:'2px solid #cbdce4',paddingBottom:17}}>EVALUACIÓN SIN CIFRAS SUPUESTAS</div>
+    {inputs.map((x,i)=>{const op=reveal(.08+i*.19);return <div key={i} style={{opacity:op,marginTop:32}}>
+     <div style={{fontSize:22,fontWeight:900}}>{x.label}</div>
+     <div style={{fontSize:25,marginTop:6,color:'#526f80'}}>{x.detail}</div>
+     <div style={{height:12,background:'#d3e1e7',marginTop:13,borderRadius:9,overflow:'hidden'}}>
+      <div style={{height:'100%',width:'100%',background:x.color,transform:'scaleX('+(.05+Math.max(0,Math.min(1,(progress-.1-i*.19)*3))*.85)+')',transformOrigin:'left'}}/>
+     </div>
+    </div>})}
+   </div>
+   <div style={{width:520,background:'#142d3e',border:'1px solid #3a6478',borderRadius:18,padding:34,display:'flex',flexDirection:'column',justifyContent:'center'}}>
+    <div style={{color:'#9fc8d8',fontSize:21,fontWeight:900,letterSpacing:2}}>CRITERIO DE DECISIÓN</div>
+    <div style={{fontSize:36,fontWeight:900,lineHeight:1.18,marginTop:25}}>Tiempo + costes</div>
+    <div style={{height:3,background:'#598ba1',margin:'23px 0'}}/>
+    <div style={{fontSize:36,fontWeight:900,lineHeight:1.18}}>Valor entregado</div>
+    <div style={{marginTop:33,padding:'18px 21px',borderLeft:'5px solid '+accent,background:'#1b4653',opacity:reveal(.62),fontSize:24,fontWeight:800,lineHeight:1.25}}>Cobrar solo si puedes justificar el valor y sostener el trabajo.</div>
+   </div>
+  </div>
+  <div style={{position:'absolute',left:94,bottom:68,color:'#abc4d0',fontSize:22}}>Esquema cualitativo · sin precios ni beneficios calculados</div>
+ </AbsoluteFill>;
+};
+
 const V11Diagram = ({shot,brief}) => {
  const kind=String(brief?.diagramType||'');
  if(['sample_feedback','proposal','demonstrated_skill'].includes(String(brief?.concept||'')))return <V116WorkDocument shot={shot} brief={brief}/>;
  if(kind==='verification_steps')return <V112Verification shot={shot} brief={brief}/>;
  if(kind==='weekly_plan')return <V115WeeklyPlan shot={shot} brief={brief}/>;
+ if(kind==='cost_decision')return <V117CostDecision shot={shot} brief={brief}/>;
  if(kind==='side_by_side'||kind==='cost_decision')return <V114Comparison shot={shot} brief={brief}/>;
  if(['privacy_flow','side_by_side','cost_decision','workflow_flow','service_deliverable','active_learning','prompt_structure'].includes(kind))return <V113EditorialFlow shot={shot} brief={brief}/>;
  // Other diagram families retain the existing verified V9 rendering until
