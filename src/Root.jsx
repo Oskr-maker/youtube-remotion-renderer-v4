@@ -971,9 +971,46 @@ const V112Verification = ({shot,brief}) => {
  </AbsoluteFill>;
 };
 
+
+const V113EditorialFlow = ({shot,brief}) => {
+ const frame=useCurrentFrame();const {fps}=useVideoConfig();
+ const duration=Math.max(1,Number(shot.durationFrames)||150);
+ const objects=V11Unique(brief.objects).slice(0,3);
+ const accent=V7Theme(shot);
+ const kind=String(brief.diagramType||'');
+ const privacy=kind==='privacy_flow';
+ const comparison=kind==='side_by_side'||kind==='cost_decision';
+ const progress=Math.max(0,Math.min(1,frame/duration));
+ const reveal=(at)=>interpolate(progress,[at,Math.min(1,at+.17)],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+ const title=privacy?'DÓNDE SE EXPONEN LOS DATOS':comparison?'DOS OPCIONES, UN CRITERIO':'DE LA ENTRADA AL RESULTADO';
+ const labels=objects.length>=2?objects:privacy?['Datos','Permisos','Protección']:['Entrada','Proceso','Resultado'];
+ return <AbsoluteFill style={{background:'#07111c',fontFamily:FONT,color:'#fff',overflow:'hidden'}}>
+   <Grid opacity={.045}/>
+   <div style={{position:'absolute',left:96,top:64,fontSize:22,color:accent,letterSpacing:4,fontWeight:900}}>{privacy?'PRIVACIDAD':comparison?'COMPARACIÓN':'FLUJO VISUAL'}</div>
+   <div style={{position:'absolute',left:96,top:116,fontSize:53,fontWeight:900,letterSpacing:-1}}>{title}</div>
+   <div style={{position:'absolute',left:95,right:95,top:275,bottom:140,display:'flex',alignItems:'center',justifyContent:'center',gap:34}}>
+    {labels.map((label,i)=>{
+      const a=reveal(i*.23),w=comparison?710:Math.round(1510/labels.length)-32;
+      return <React.Fragment key={i}>
+       <div style={{width:w,minHeight:410,position:'relative',opacity:a,transform:`translateY(${(1-a)*55}px)`,borderRadius:24,border:`2px solid ${privacy&&i===1?'#ffbd59':i===labels.length-1?'#3fd6aa':'#507894'}`,background:privacy&&i===1?'linear-gradient(145deg,#382718,#15202b)':'linear-gradient(145deg,#18334a,#0b1d2b)',padding:34}}>
+         <div style={{fontSize:24,color:i===labels.length-1?'#54e4b7':'#9ccae7',fontWeight:900,letterSpacing:3}}>0{i+1}</div>
+         {privacy?<div style={{margin:'35px auto 20px',width:130,height:135,border:'5px solid #c8e8fa',borderRadius:16,position:'relative',display:'grid',placeItems:'center',fontSize:65,color:i===1?'#ffbd59':'#8fe1cc'}}>{i===0?'▤':i===1?'!':'✓'}</div>
+         :<div style={{margin:'35px auto 20px',height:135,display:'grid',placeItems:'center',fontSize:92,fontWeight:850,color:i===labels.length-1?'#55e2bb':'#b4daef'}}>{i===0?'◈':i===1?'⇄':'✓'}</div>}
+         <div style={{fontSize:35,fontWeight:850,lineHeight:1.13,textAlign:'center',overflowWrap:'anywhere'}}>{shortText(label,66)}</div>
+       </div>
+       {i<labels.length-1 && <div style={{fontSize:52,color:accent,opacity:reveal((i+.4)*.23)}}>→</div>}
+      </React.Fragment>;
+    })}
+   </div>
+   <div style={{position:'absolute',left:95,right:95,bottom:61,fontSize:22,color:'#a9bfd0'}}>ESQUEMA ILUSTRATIVO · NO REPRESENTA DATOS VERIFICADOS</div>
+   <div style={{position:'absolute',right:96,bottom:66,fontSize:23,fontWeight:850,color:'#cfe6f5'}}>{Math.round(progress*100)}%</div>
+ </AbsoluteFill>;
+};
+
 const V11Diagram = ({shot,brief}) => {
  const kind=String(brief?.diagramType||'');
  if(kind==='verification_steps')return <V112Verification shot={shot} brief={brief}/>;
+ if(['privacy_flow','side_by_side','cost_decision','workflow_flow','service_deliverable','active_learning','prompt_structure'].includes(kind))return <V113EditorialFlow shot={shot} brief={brief}/>;
  // Other diagram families retain the existing verified V9 rendering until
  // their own scene-specific visual treatments have been implemented.
  return <V9Semantic shot={shot} brief={brief}/>;
