@@ -1088,8 +1088,75 @@ const V115WeeklyPlan = ({shot,brief}) => {
  </AbsoluteFill>;
 };
 
+
+/** V11.6 — narration-based overlay for real footage, without hiding it. */
+const V116StockStory = ({shot,brief}) => {
+ const frame=useCurrentFrame();
+ const {fps}=useVideoConfig();
+ const duration=Math.max(1,Number(shot?.durationFrames)||150);
+ const progress=Math.min(1,frame/duration);
+ const accent=V7Theme(shot);
+ const concept=String(brief?.concept||'');
+ const labels={
+  sample_feedback:['MUESTRA','PEDIR COMENTARIOS','APLICAR MEJORAS'],
+  demonstrated_skill:['HABILIDAD','EJEMPLO','RESULTADO'],
+  weekly_plan:['PLAN','EJECUCIÓN','REVISIÓN'],
+  proposal:['NECESIDAD','PROPUESTA','RESULTADO']
+ };
+ const beats=labels[concept]||[];
+ const active=Math.min(2,Math.floor(progress*3));
+ return <AbsoluteFill>
+  <V10StockEditorial shot={shot}/>
+  {beats.length>0&&<div style={{position:'absolute',left:75,top:64,width:615,padding:'24px 27px',borderRadius:15,background:'rgba(6,15,26,.81)',border:'1px solid rgba(180,220,245,.3)',fontFamily:FONT,color:'#fff',boxShadow:'0 10px 50px #0006'}}>
+   <div style={{fontSize:19,fontWeight:850,color:accent,letterSpacing:3,marginBottom:16}}>PROCESO EN CONTEXTO</div>
+   {beats.map((label,i)=>{
+    const opacity=interpolate(frame,[Math.round(i*.26*duration),Math.round((i*.26+.12)*duration)],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+    return <div key={i} style={{opacity,display:'flex',alignItems:'center',gap:17,marginBottom:i===2?0:12,fontSize:23,fontWeight:i===active?900:650,color:i===active?'#fff':'#a7c1d1'}}>
+     <div style={{height:34,width:34,display:'grid',placeItems:'center',borderRadius:8,background:i<=active?accent:'#29445b',color:'#06121d',fontWeight:900,fontSize:19}}>{i+1}</div>
+     {label}
+    </div>;
+   })}
+  </div>}
+ </AbsoluteFill>;
+};
+
+/** V11.6 — concrete document/review workflow, instead of abstract 3-card diagrams. */
+const V116WorkDocument = ({shot,brief}) => {
+ const frame=useCurrentFrame();const {fps}=useVideoConfig();
+ const total=Math.max(1,Number(shot?.durationFrames)||150);
+ const p=Math.min(1,frame/total);
+ const accent=V7Theme(shot);
+ const concept=String(brief?.concept||'');
+ const isProposal=concept==='proposal';
+ const isFeedback=concept==='sample_feedback';
+ const isStudy=concept==='demonstrated_skill';
+ const titles=isProposal?['NECESIDAD DETECTADA','PROPUESTA DE SERVICIO','RESULTADO ESPERADO']:isFeedback?['PRIMER BORRADOR','COMENTARIOS','VERSIÓN REVISADA']:isStudy?['HABILIDAD','APLICACIÓN PRÁCTICA','RESULTADO']:['ENTRADA','TRABAJO','REVISIÓN'];
+ const descriptions=isProposal?['Problema definido','Solución planteada','Validación pendiente']:isFeedback?['Muestra ilustrativa','Cambios solicitados','Mejoras aplicadas']:isStudy?['Objetivo concreto','Ejemplo realizado','Evidencia de trabajo']:['Definir','Aplicar','Comprobar'];
+ const active=Math.min(2,Math.floor(p*3));
+ return <AbsoluteFill style={{fontFamily:FONT,color:'#eef7fc',background:'linear-gradient(120deg,#07111b,#122b3e)'}}>
+  <Grid opacity={.035}/>
+  <div style={{position:'absolute',top:62,left:88,color:accent,fontSize:22,fontWeight:900,letterSpacing:3}}>DEMOSTRACIÓN DE TRABAJO</div>
+  <div style={{position:'absolute',top:122,left:88,fontSize:53,fontWeight:900}}>{isProposal?'De una necesidad a una propuesta':isFeedback?'La muestra evoluciona con comentarios':isStudy?'Una habilidad se demuestra trabajando':'Del objetivo al resultado'}</div>
+  <div style={{position:'absolute',left:88,right:88,top:258,bottom:130,display:'flex',gap:35}}>
+   <div style={{width:'61%',background:'#f1f5f7',borderRadius:19,color:'#142b3d',padding:'30px 40px',position:'relative',boxShadow:'0 24px 75px #0007'}}>
+    <div style={{display:'flex',alignItems:'center',gap:13,fontSize:23,fontWeight:900,borderBottom:'2px solid #c9d7df',paddingBottom:20}}><div style={{width:14,height:14,borderRadius:99,background:'#e87972'}}/><div style={{width:14,height:14,borderRadius:99,background:'#ecc15a'}}/><div style={{width:14,height:14,borderRadius:99,background:'#5ccfae'}}/><span style={{marginLeft:20}}>DOCUMENTO DE EJEMPLO · EN REVISIÓN</span></div>
+    <div style={{marginTop:35,fontSize:20,color:'#537185',fontWeight:900,letterSpacing:2}}>{titles[active]}</div>
+    <div style={{marginTop:20,fontSize:45,fontWeight:850,lineHeight:1.2}}>{descriptions[active]}</div>
+    <div style={{marginTop:34,width:'84%',height:17,borderRadius:10,background:'#a8c2d0'}}/><div style={{marginTop:19,width:'72%',height:17,borderRadius:10,background:'#d0dfe7'}}/><div style={{marginTop:19,width:'91%',height:17,borderRadius:10,background:'#d0dfe7'}}/>
+    <div style={{position:'absolute',bottom:30,left:40,right:40,padding:'19px 24px',borderRadius:12,background:'#d5ece7',fontSize:22,fontWeight:850}}>EJEMPLO ILUSTRATIVO · REVISIÓN NECESARIA</div>
+   </div>
+   <div style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'center',gap:26}}>
+    {titles.map((title,i)=>{const opacity=interpolate(p,[i*.24,Math.min(1,i*.24+.15)],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});return <div key={i} style={{padding:'22px 26px',opacity,background:active===i?'#1b5260':'#132a3a',borderLeft:'6px solid '+(active===i?accent:'#416578'),borderRadius:10}}>
+      <div style={{fontSize:18,color:'#aac9d9',letterSpacing:2,fontWeight:850}}>ETAPA 0{i+1}</div><div style={{fontSize:27,fontWeight:850,marginTop:6}}>{title}</div>
+    </div>})}
+   </div>
+  </div>
+ </AbsoluteFill>;
+};
+
 const V11Diagram = ({shot,brief}) => {
  const kind=String(brief?.diagramType||'');
+ if(['sample_feedback','proposal','demonstrated_skill'].includes(String(brief?.concept||'')))return <V116WorkDocument shot={shot} brief={brief}/>;
  if(kind==='verification_steps')return <V112Verification shot={shot} brief={brief}/>;
  if(kind==='weekly_plan')return <V115WeeklyPlan shot={shot} brief={brief}/>;
  if(kind==='side_by_side'||kind==='cost_decision')return <V114Comparison shot={shot} brief={brief}/>;
@@ -1102,8 +1169,9 @@ const V11Diagram = ({shot,brief}) => {
 const V8ShotRenderer = ({shot}) => {
   if(shot?.sceneId==='S0'||shot?.locked===true||shot?.preserveExistingRenderer===true) return <LogicHookStage shot={shot}/>;
   const {source,image}=pickMedia(shot);
-  if(source||image) return <V10StockEditorial shot={shot}/>;
   const brief=V9Data(shot);
+  if((source||image) && brief?.semanticGroundingVerified===true && ['sample_feedback','demonstrated_skill','weekly_plan','proposal'].includes(String(brief.concept||''))) return <V116StockStory shot={shot} brief={brief}/>;
+  if(source||image) return <V10StockEditorial shot={shot}/>;
   if(brief && brief.semanticGroundingVerified===true && V11Kinds.has(String(brief.diagramType||''))) return <V11Diagram shot={shot} brief={brief}/>;
   if(brief) return <V9Semantic shot={shot} brief={brief}/>;
   return <V7ShotRenderer shot={shot}/>;
