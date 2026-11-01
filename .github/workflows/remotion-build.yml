@@ -1,0 +1,33 @@
+name: Remotion V10 build check
+
+on:
+  push:
+    branches:
+      - feature/editorial-stock-v10-20261028
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Compile Remotion entrypoint
+        run: |
+          node --input-type=module <<'JS'
+          import {bundle} from '@remotion/bundler';
+          import path from 'node:path';
+          const dir = await bundle({
+            entryPoint: path.resolve('src/index.jsx'),
+            webpackOverride: (config) => config,
+          });
+          console.log('Remotion bundle compiled:', dir);
+          JS

@@ -844,11 +844,444 @@ const V9Semantic = ({shot,brief}) => {
 
 // Punto único de entrada: el Composition existente ya llama V8ShotRenderer.
 // Se mantienen intactas la ruta V4, las escenas S0 y las rutas legacy.
+
+// V10.1 - Editorial discipline: visuals must never invent narration.
+// Stock stays full-frame; no taxonomy, sample objects or scene placeholders onscreen.
+// Only a narration-grounded, non-generic statement may become a caption.
+const V10Generic = new Set([
+ 'subject','action','result','generic','general explainer','intro',
+ 'hook','clue','object','context','professional','laptop','workspace',
+ 'situación','acción','resultado','sección','explicación','visual'
+]);
+const V10Label = v => String(v ?? '').replace(/[_-]+/g,' ').replace(/\\s+/g,' ').trim();
+const V10IsGeneric = value => {
+ const text=V10Label(value).toLowerCase();
+ return !text || V10Generic.has(text) || /^(intro|hook|section|scene|shot|generic|s[0-9]+)$/i.test(text);
+};
+const V10StockEditorial = ({shot}) => {
+ const frame=useCurrentFrame();
+ const {fps}=useVideoConfig();
+ const duration=Math.max(1,Number(shot?.durationFrames)||150);
+ const progress=clamp((frame+1)/duration,0,1);
+ const {source,image}=pickMedia(shot);
+ const brief=shot?.editorialVisualBrief||{};
+ const narrationMatched=brief.contextFromNarration===true &&
+   typeof brief.voiceoverExcerpt==='string' &&
+   brief.voiceoverExcerpt.trim().length>=15;
+ const headline=V10Label(shot?.textElements?.[0]||shot?.sceneTitle);
+ const showHeadline=narrationMatched && shot?.stockHeadlineApproved===true && !V10IsGeneric(headline) &&
+   headline.length>=9 && headline.length<=105;
+ const accent=V7Theme(shot);
+ const reveal=interpolate(frame,[0,Math.max(1,Math.round(fps*.32))],[0,1],
+   {extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+ // Small, deliberate camera movement rather than decorative UI panels.
+ const zoom=1.008+progress*.029;
+ const translate=interpolate(progress,[0,1],[-.6,.6]);
+ return <AbsoluteFill style={{background:'#04070c',overflow:'hidden'}}>
+   <AbsoluteFill style={{overflow:'hidden'}}>
+     {source?<Video src={source} muted loop style={{
+       width:'100%',height:'100%',objectFit:'cover',
+       transform:`translateX(${translate}%) scale(${zoom})`,
+       filter:'saturate(1.07) contrast(1.055)'
+     }}/>:image?<Img src={image} style={{
+       width:'100%',height:'100%',objectFit:'cover',
+       transform:`translateX(${translate}%) scale(${zoom})`
+     }}/>:<BaseBackground/>}
+   </AbsoluteFill>
+   <AbsoluteFill style={{
+      background:'linear-gradient(0deg,rgba(1,6,13,.42) 0%,transparent 20%,transparent 78%,rgba(1,6,13,.12) 100%)',
+      pointerEvents:'none'
+   }}/>
+   {showHeadline&&<div style={{
+      position:'absolute',left:78,bottom:100,maxWidth:1120,
+      opacity:reveal,transform:`translateY(${(1-reveal)*16}px)`,
+      background:'rgba(3,9,18,.72)',borderLeft:`5px solid ${accent}`,
+      padding:'18px 28px',borderRadius:8,
+      color:'#fff',fontFamily:FONT,fontSize:38,fontWeight:790,
+      lineHeight:1.14,textShadow:'0 2px 9px rgba(0,0,0,.32)'
+   }}>{shortText(headline,94)}</div>}
+ </AbsoluteFill>;
+};
+
+
+/**
+ * V11 - narration-grounded editorial diagrams.
+ * Kept additive: approved S0 is dispatched before this component.
+ * No numerical facts or demonstration content are invented.
+ */
+const V11Clean = v => String(v ?? '').replace(/[_-]+/g,' ').replace(/\\s+/g,' ').trim();
+const V11Unique = xs => [...new Set(safeArray(xs).map(V11Clean).filter(Boolean))];
+const V11Kinds = new Set(['verification_steps','privacy_flow','prompt_structure','active_learning','service_deliverable','workflow_flow','side_by_side','weekly_plan','cost_decision','cause_effect','human_ai_workflow','reasoning_flow','calendar_logic','document_draft_review','step_flow','weekly_plan']);
+
+/**
+ * V11.2: Evidence-led verification scene.
+ * Uses only conceptual, explicitly illustrative examples;
+ * never fabricates a source or asserts a fact was verified.
+ */
+const V112Verification = ({shot,brief}) => {
+ const frame=useCurrentFrame();const {fps}=useVideoConfig();
+ const total=Math.max(1,Number(shot.durationFrames)||150);
+ const accent=V7Theme(shot);
+ const progress=Math.min(1,Math.max(0,frame/total));
+ const reveal=(at)=>interpolate(frame,[Math.max(0,Math.round(at*total)),Math.max(1,Math.round(at*total+fps*.25))],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+ const first=reveal(0),second=reveal(.28),third=reveal(.63);
+ const zoom=1+Math.min(1,progress)*.055;
+ const note=brief?.contextFromNarration===true?'EJEMPLO ILUSTRATIVO · SIN FUENTES REALES':'DEMOSTRACIÓN CONCEPTUAL';
+ const card={border:'1px solid rgba(205,232,250,.22)',borderRadius:22,background:'linear-gradient(155deg,#172a3b,#0a1523)',boxShadow:'0 22px 70px rgba(0,0,0,.35)'};
+ return <AbsoluteFill style={{fontFamily:FONT,background:'radial-gradient(circle at 54% 30%,#15304a,#060d18 68%)',color:'#f5f9ff',overflow:'hidden'}}>
+  <Grid opacity={.045}/>
+  <div style={{position:'absolute',left:105,top:62,color:accent,fontSize:21,fontWeight:900,letterSpacing:4}}>COMPROBAR UNA RESPUESTA</div>
+  <div style={{position:'absolute',left:105,top:112,fontSize:49,fontWeight:900,maxWidth:1480,lineHeight:1.1}}>De una afirmación a una revisión fundamentada</div>
+  <div style={{position:'absolute',left:105,right:105,top:254,bottom:115,display:'grid',gridTemplateColumns:'1fr .21fr 1fr',gap:30,transform:`scale(${zoom})`,transformOrigin:'center center'}}>
+   <div style={{...card,padding:34,opacity:first,transform:`translateY(${(1-first)*32}px)`}}>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:32}}>
+     <div style={{fontSize:19,letterSpacing:3,color:'#8ac8ee',fontWeight:850}}>01 · RESPUESTA INICIAL</div>
+     <div style={{fontSize:19,color:'#ffc36e',fontWeight:800}}>PENDIENTE</div>
+    </div>
+    <div style={{background:'#e9f1f7',borderRadius:12,padding:'32px 30px',height:'66%',color:'#152b3a',position:'relative'}}>
+     <div style={{fontSize:26,fontWeight:850,marginBottom:24}}>Documento de trabajo</div>
+     <div style={{height:11,background:'#b7cbd9',borderRadius:6,width:'88%',marginBottom:18}}/>
+     <div style={{height:11,background:'#b7cbd9',borderRadius:6,width:'72%',marginBottom:22}}/>
+     <div style={{fontSize:28,fontWeight:850,border:'3px solid #d88c36',background:'#fff4db',padding:'17px 18px',borderRadius:10}}>Afirmación por comprobar</div>
+     <div style={{height:11,background:'#b7cbd9',borderRadius:6,width:'78%',marginTop:25}}/>
+    </div>
+   </div>
+   <div style={{display:'flex',justifyContent:'center',alignItems:'center',flexDirection:'column',gap:24,opacity:second}}>
+    <div style={{height:88,width:88,borderRadius:44,background:'#153449',border:`3px solid ${accent}`,display:'grid',placeItems:'center',fontSize:48}}>⌕</div>
+    <div style={{fontSize:22,fontWeight:850,color:'#b8deec',textAlign:'center'}}>CONTRASTAR</div>
+    <div style={{fontSize:62,color:accent}}>→</div>
+   </div>
+   <div style={{...card,padding:34,opacity:second,transform:`translateY(${(1-second)*32}px)`}}>
+    <div style={{fontSize:19,letterSpacing:3,color:'#8ac8ee',fontWeight:850,marginBottom:28}}>02 · REVISIÓN DE FUENTE</div>
+    <div style={{background:'#102437',borderRadius:14,border:'1px solid #36566b',padding:'25px 28px',minHeight:165}}>
+     <div style={{fontSize:22,color:'#b5cde2',marginBottom:17}}>Referencia independiente</div>
+     <div style={{height:9,background:'#5e8095',borderRadius:5,width:'85%',marginBottom:15}}/>
+     <div style={{height:9,background:'#5e8095',borderRadius:5,width:'63%',marginBottom:15}}/>
+     <div style={{fontSize:22,fontWeight:800,color:'#f3ca80'}}>¿Coincide con la afirmación?</div>
+    </div>
+    <div style={{marginTop:28,borderRadius:14,padding:'25px 26px',border:`2px solid ${third?'#36d4a4':'#4b6277'}`,background:third?'rgba(15,93,83,.35)':'rgba(8,25,39,.8)',opacity:third}}>
+     <div style={{fontSize:19,letterSpacing:2,color:'#a2e9d3',fontWeight:900,marginBottom:12}}>03 · REVISIÓN HUMANA</div>
+     <div style={{fontSize:31,fontWeight:900}}>Corregir o confirmar</div>
+     <div style={{fontSize:21,color:'#b7d7d0',marginTop:10}}>Solo después de contrastar la fuente</div>
+    </div>
+   </div>
+  </div>
+  <div style={{position:'absolute',left:105,bottom:49,color:'#9fb5c7',fontSize:19,letterSpacing:1}}>{note}</div>
+  <div style={{position:'absolute',right:105,bottom:55,fontSize:24,color:'#d8e7f4',fontWeight:800}}>REVISAR ANTES DE PUBLICAR</div>
+ </AbsoluteFill>;
+};
+
+
+const V113EditorialFlow = ({shot,brief}) => {
+ const frame=useCurrentFrame();const {fps}=useVideoConfig();
+ const duration=Math.max(1,Number(shot.durationFrames)||150);
+ const objects=V11Unique(brief.objects).slice(0,3);
+ const accent=V7Theme(shot);
+ const kind=String(brief.diagramType||'');
+ const privacy=kind==='privacy_flow';
+ const comparison=kind==='side_by_side'||kind==='cost_decision';
+ const progress=Math.max(0,Math.min(1,frame/duration));
+ const reveal=(at)=>interpolate(progress,[at,Math.min(1,at+.17)],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+ const title=privacy?'DÓNDE SE EXPONEN LOS DATOS':comparison?'DOS OPCIONES, UN CRITERIO':'DE LA ENTRADA AL RESULTADO';
+ const labels=objects.length>=2?objects:privacy?['Datos','Permisos','Protección']:['Entrada','Proceso','Resultado'];
+ return <AbsoluteFill style={{background:'#07111c',fontFamily:FONT,color:'#fff',overflow:'hidden'}}>
+   <Grid opacity={.045}/>
+   <div style={{position:'absolute',left:96,top:64,fontSize:22,color:accent,letterSpacing:4,fontWeight:900}}>{privacy?'PRIVACIDAD':comparison?'COMPARACIÓN':'FLUJO VISUAL'}</div>
+   <div style={{position:'absolute',left:96,top:116,fontSize:53,fontWeight:900,letterSpacing:-1}}>{title}</div>
+   <div style={{position:'absolute',left:95,right:95,top:275,bottom:140,display:'flex',alignItems:'center',justifyContent:'center',gap:34}}>
+    {labels.map((label,i)=>{
+      const a=reveal(i*.23),w=comparison?710:Math.round(1510/labels.length)-32;
+      return <React.Fragment key={i}>
+       <div style={{width:w,minHeight:410,position:'relative',opacity:a,transform:`translateY(${(1-a)*55}px)`,borderRadius:24,border:`2px solid ${privacy&&i===1?'#ffbd59':i===labels.length-1?'#3fd6aa':'#507894'}`,background:privacy&&i===1?'linear-gradient(145deg,#382718,#15202b)':'linear-gradient(145deg,#18334a,#0b1d2b)',padding:34}}>
+         <div style={{fontSize:24,color:i===labels.length-1?'#54e4b7':'#9ccae7',fontWeight:900,letterSpacing:3}}>0{i+1}</div>
+         {privacy?<div style={{margin:'35px auto 20px',width:130,height:135,border:'5px solid #c8e8fa',borderRadius:16,position:'relative',display:'grid',placeItems:'center',fontSize:65,color:i===1?'#ffbd59':'#8fe1cc'}}>{i===0?'▤':i===1?'!':'✓'}</div>
+         :<div style={{margin:'35px auto 20px',height:135,display:'grid',placeItems:'center',fontSize:92,fontWeight:850,color:i===labels.length-1?'#55e2bb':'#b4daef'}}>{i===0?'◈':i===1?'⇄':'✓'}</div>}
+         <div style={{fontSize:35,fontWeight:850,lineHeight:1.13,textAlign:'center',overflowWrap:'anywhere'}}>{shortText(label,66)}</div>
+       </div>
+       {i<labels.length-1 && <div style={{fontSize:52,color:accent,opacity:reveal((i+.4)*.23)}}>→</div>}
+      </React.Fragment>;
+    })}
+   </div>
+   <div style={{position:'absolute',left:95,right:95,bottom:61,fontSize:22,color:'#a9bfd0'}}>ESQUEMA ILUSTRATIVO · NO REPRESENTA DATOS VERIFICADOS</div>
+   <div style={{position:'absolute',right:96,bottom:66,fontSize:23,fontWeight:850,color:'#cfe6f5'}}>{Math.round(progress*100)}%</div>
+ </AbsoluteFill>;
+};
+
+
+/**
+ * V11.4 contextual comparison: no invented alternatives.
+ * Displays concrete UI demonstrations only when the
+ * narration explicitly licenses the comparison.
+ */
+const V114Comparison = ({shot,brief}) => {
+ const frame=useCurrentFrame();const {fps}=useVideoConfig();
+ const total=Math.max(1,Number(shot.durationFrames)||150);
+ const norm=v=>String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+ const narration=norm(brief.voiceoverExcerpt);
+ const isPrompt=/prompt|contexto|instrucci[oó]n|formato/.test(narration);
+ const isCheck=/verific|comprob|revis|fuente|fiable|evidencia/.test(narration);
+ const mode=isPrompt?'prompt':isCheck?'verification':'unknown';
+ const progress=Math.min(1,frame/total);
+ const enter=(at)=>interpolate(progress,[at,Math.min(.99,at+.19)],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+ const accent=V7Theme(shot);
+ const leftTitle=mode==='prompt'?'PETICIÓN IMPRECISA':mode==='verification'?'SIN CONTRASTAR':'CRITERIO NO ESPECIFICADO';
+ const rightTitle=mode==='prompt'?'PETICIÓN CON CONTEXTO':mode==='verification'?'CON COMPROBACIÓN':'REQUIERE UN EJEMPLO';
+ const leftLine=mode==='prompt'?'«Escribe un texto»':mode==='verification'?'Una respuesta sin comprobar':'La narración no define las alternativas';
+ const rightLines=mode==='prompt'?['Objetivo del texto','Público destinatario','Formato esperado']:mode==='verification'?['Identificar la afirmación','Consultar una fuente','Revisar antes de usar']:['No inventar una opción','Esperar datos narrativos','Mantener el contexto'];
+ const right=enter(.24); const finished=enter(.65);
+ return <AbsoluteFill style={{background:'radial-gradient(circle at 65% 30%,#132b42,#06111b 66%)',color:'#f7fafd',fontFamily:FONT,overflow:'hidden'}}>
+  <Grid opacity={.035}/>
+  <div style={{position:'absolute',top:60,left:100,fontSize:21,color:accent,letterSpacing:4,fontWeight:900}}>COMPARACIÓN CON CONTEXTO</div>
+  <div style={{position:'absolute',top:113,left:100,right:100,fontSize:49,fontWeight:900}}>La diferencia está en el método</div>
+  <div style={{position:'absolute',left:100,right:100,top:260,bottom:153,display:'grid',gridTemplateColumns:'1fr 1fr',gap:50}}>
+   <div style={{border:'2px solid #795f54',background:'#111e2b',borderRadius:24,padding:36,opacity:enter(0),transform:`translateX(${(1-enter(0))*-40}px)`}}>
+    <div style={{fontSize:23,color:'#f2b18c',fontWeight:850,letterSpacing:2}}>{leftTitle}</div>
+    <div style={{background:'#e9eff4',borderRadius:16,marginTop:30,padding:35,height:365,color:'#1b3145',boxShadow:'0 22px 50px #0005'}}>
+     <div style={{fontSize:18,fontWeight:800,marginBottom:34,color:'#6a8193'}}>ENTRADA · EJEMPLO ILUSTRATIVO</div>
+     <div style={{fontSize:32,fontWeight:850,lineHeight:1.3}}>{leftLine}</div>
+     <div style={{height:8,background:'#c6d2dc',borderRadius:8,width:'85%',marginTop:35}}/>
+     <div style={{height:8,background:'#c6d2dc',borderRadius:8,width:'60%',marginTop:18}}/>
+    </div>
+   </div>
+   <div style={{border:`2px solid ${accent}`,background:'#10283b',borderRadius:24,padding:36,opacity:right,transform:`translateX(${(1-right)*42}px)`}}>
+    <div style={{fontSize:23,color:'#7eeac6',fontWeight:850,letterSpacing:2}}>{rightTitle}</div>
+    <div style={{background:'#e9eff4',borderRadius:16,marginTop:30,padding:33,height:365,color:'#1b3145',boxShadow:'0 22px 50px #0005'}}>
+     <div style={{fontSize:18,fontWeight:800,marginBottom:26,color:'#6a8193'}}>PROCEDIMIENTO · DEMOSTRACIÓN</div>
+     {rightLines.map((line,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:20,marginBottom:22,opacity:enter(.32+i*.12)}}>
+       <span style={{width:43,height:43,borderRadius:12,display:'grid',placeItems:'center',background:i===2?'#107e65':'#d5e4ee',fontSize:25,color:i===2?'#fff':'#315a70',fontWeight:900}}>{i===2?'✓':i+1}</span>
+       <span style={{fontSize:27,fontWeight:800}}>{line}</span>
+      </div>)}
+    </div>
+   </div>
+  </div>
+  <div style={{position:'absolute',left:100,bottom:65,fontSize:22,color:'#a6bfce'}}>ESQUEMA ILUSTRATIVO · NO ES UNA COMPROBACIÓN REAL</div>
+  {finished>0&&<div style={{position:'absolute',right:100,bottom:61,fontSize:23,fontWeight:850,color:'#8de9c6',opacity:finished}}>CONTEXTO Y REVISIÓN</div>}
+ </AbsoluteFill>;
+};
+
+
+/**
+ * V11.5: narration-aligned weekly planning board.
+ * A specific editorial scene, not three generic numbered cards.
+ */
+const V115WeeklyPlan = ({shot,brief}) => {
+ const frame=useCurrentFrame();const {fps}=useVideoConfig();
+ const total=Math.max(1,Number(shot.durationFrames)||150);
+ const p=Math.min(1,frame/total);
+ const reveal=(v)=>interpolate(p,[v,Math.min(.98,v+.14)],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+ const accent=V7Theme(shot);
+ const tasks=Array.isArray(brief?.editorialDetails?.steps) && brief.editorialDetails.steps.length>=2
+  ? brief.editorialDetails.steps.slice(0,4)
+  : ['Definir una tarea','Preparar un ejemplo','Revisar el resultado','Guardar una muestra'];
+ return <AbsoluteFill style={{background:'linear-gradient(130deg,#07111e,#13283b)',fontFamily:FONT,color:'#f3faff'}}>
+  <Grid opacity={.032}/>
+  <div style={{position:'absolute',left:94,top:58,color:accent,fontSize:22,fontWeight:900,letterSpacing:4}}>PLAN DE ACCIÓN</div>
+  <div style={{position:'absolute',left:94,top:113,fontSize:51,fontWeight:900}}>De una idea a tareas verificables</div>
+  <div style={{position:'absolute',left:94,right:94,top:256,bottom:135,background:'#ebf1f5',color:'#182d3d',borderRadius:23,padding:32,boxShadow:'0 25px 75px #0008'}}>
+   <div style={{display:'flex',justifyContent:'space-between',borderBottom:'3px solid #c4d5df',paddingBottom:22,fontWeight:900,fontSize:27}}><span>TABLERO DE TRABAJO · EJEMPLO</span><span>REVISIÓN HUMANA</span></div>
+   {tasks.map((task,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:26,marginTop:23,opacity:reveal(.10+i*.19),padding:'15px 24px',borderRadius:13,background:i===Math.min(3,Math.floor(p*4))?'#d4f0e9':'#fff',border:'2px solid #c5d3da'}}>
+    <div style={{width:51,height:51,borderRadius:12,display:'grid',placeItems:'center',background:i<Math.floor(p*4)?'#188b71':'#d1dee6',color:i<Math.floor(p*4)?'#fff':'#45627b',fontSize:29,fontWeight:900}}>{i<Math.floor(p*4)?'✓':i+1}</div>
+    <div style={{fontSize:32,fontWeight:850}}>{String(task).slice(0,76)}</div>
+   </div>)}
+  </div>
+  <div style={{position:'absolute',bottom:55,left:94,fontSize:23,color:'#b5d0df'}}>Secuencia ilustrativa · las tareas requieren validación con el guion</div>
+ </AbsoluteFill>;
+};
+
+
+/** V11.6 — narration-based overlay for real footage, without hiding it. */
+const V116StockStory = ({shot,brief}) => {
+ const frame=useCurrentFrame();
+ const {fps}=useVideoConfig();
+ const duration=Math.max(1,Number(shot?.durationFrames)||150);
+ const progress=Math.min(1,frame/duration);
+ const accent=V7Theme(shot);
+ const concept=String(brief?.concept||'');
+ const labels={
+  sample_feedback:['MUESTRA','PEDIR COMENTARIOS','APLICAR MEJORAS'],
+  demonstrated_skill:['HABILIDAD','EJEMPLO','RESULTADO'],
+  weekly_plan:['PLAN','EJECUCIÓN','REVISIÓN'],
+  proposal:['NECESIDAD','PROPUESTA','RESULTADO']
+ };
+ const beats=labels[concept]||[];
+ const active=Math.min(2,Math.floor(progress*3));
+ return <AbsoluteFill>
+  <V10StockEditorial shot={shot}/>
+  {beats.length>0&&<div style={{position:'absolute',left:62,top:58,width:460,padding:'17px 20px',borderRadius:15,background:'rgba(6,15,26,.81)',border:'1px solid rgba(180,220,245,.3)',fontFamily:FONT,color:'#fff',boxShadow:'0 10px 50px #0006'}}>
+   <div style={{fontSize:16,fontWeight:850,color:accent,letterSpacing:2,marginBottom:11}}>PROCESO EN CONTEXTO</div>
+   {beats.map((label,i)=>{
+    const opacity=interpolate(frame,[Math.round(i*.26*duration),Math.round((i*.26+.12)*duration)],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+    return <div key={i} style={{opacity,display:'flex',alignItems:'center',gap:13,marginBottom:i===2?0:9,fontSize:19,fontWeight:i===active?900:650,color:i===active?'#fff':'#a7c1d1'}}>
+     <div style={{height:34,width:34,display:'grid',placeItems:'center',borderRadius:8,background:i<=active?accent:'#29445b',color:'#06121d',fontWeight:900,fontSize:19}}>{i+1}</div>
+     {label}
+    </div>;
+   })}
+  </div>}
+ </AbsoluteFill>;
+};
+
+/** V11.6 — concrete document/review workflow, instead of abstract 3-card diagrams. */
+const V116WorkDocument = ({shot,brief}) => {
+ const frame=useCurrentFrame();const {fps}=useVideoConfig();
+ const total=Math.max(1,Number(shot?.durationFrames)||150);
+ const p=Math.min(1,frame/total);
+ const accent=V7Theme(shot);
+ const concept=String(brief?.concept||'');
+ const isProposal=concept==='proposal';
+ const isFeedback=concept==='sample_feedback';
+ const isStudy=concept==='demonstrated_skill';
+ const titles=isProposal?['NECESIDAD DETECTADA','PROPUESTA DE SERVICIO','RESULTADO ESPERADO']:isFeedback?['PRIMER BORRADOR','COMENTARIOS','VERSIÓN REVISADA']:isStudy?['HABILIDAD','APLICACIÓN PRÁCTICA','RESULTADO']:['ENTRADA','TRABAJO','REVISIÓN'];
+ const descriptions=isProposal?['Problema definido','Solución planteada','Validación pendiente']:isFeedback?['Muestra ilustrativa','Cambios solicitados','Mejoras aplicadas']:isStudy?['Objetivo concreto','Ejemplo realizado','Evidencia de trabajo']:['Definir','Aplicar','Comprobar'];
+ const active=Math.min(2,Math.floor(p*3));
+ return <AbsoluteFill style={{fontFamily:FONT,color:'#eef7fc',background:'linear-gradient(120deg,#07111b,#122b3e)'}}>
+  <Grid opacity={.035}/>
+  <div style={{position:'absolute',top:62,left:88,color:accent,fontSize:22,fontWeight:900,letterSpacing:3}}>DEMOSTRACIÓN DE TRABAJO</div>
+  <div style={{position:'absolute',top:122,left:88,fontSize:53,fontWeight:900}}>{isProposal?'De una necesidad a una propuesta':isFeedback?'La muestra evoluciona con comentarios':isStudy?'Una habilidad se demuestra trabajando':'Del objetivo al resultado'}</div>
+  <div style={{position:'absolute',left:88,right:88,top:258,bottom:130,display:'flex',gap:35}}>
+   <div style={{width:'61%',background:'#f1f5f7',borderRadius:19,color:'#142b3d',padding:'30px 40px',position:'relative',boxShadow:'0 24px 75px #0007'}}>
+    <div style={{display:'flex',alignItems:'center',gap:13,fontSize:23,fontWeight:900,borderBottom:'2px solid #c9d7df',paddingBottom:20}}><div style={{width:14,height:14,borderRadius:99,background:'#e87972'}}/><div style={{width:14,height:14,borderRadius:99,background:'#ecc15a'}}/><div style={{width:14,height:14,borderRadius:99,background:'#5ccfae'}}/><span style={{marginLeft:20}}>DOCUMENTO DE EJEMPLO · EN REVISIÓN</span></div>
+    <div style={{marginTop:35,fontSize:20,color:'#537185',fontWeight:900,letterSpacing:2}}>{titles[active]}</div>
+    <div style={{marginTop:20,fontSize:45,fontWeight:850,lineHeight:1.2}}>{descriptions[active]}</div>
+    <div style={{marginTop:34,width:'84%',height:17,borderRadius:10,background:'#a8c2d0'}}/><div style={{marginTop:19,width:'72%',height:17,borderRadius:10,background:'#d0dfe7'}}/><div style={{marginTop:19,width:'91%',height:17,borderRadius:10,background:'#d0dfe7'}}/>
+    <div style={{position:'absolute',bottom:30,left:40,right:40,padding:'19px 24px',borderRadius:12,background:'#d5ece7',fontSize:22,fontWeight:850}}>EJEMPLO ILUSTRATIVO · REVISIÓN NECESARIA</div>
+   </div>
+   <div style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'center',gap:26}}>
+    {titles.map((title,i)=>{const opacity=interpolate(p,[i*.24,Math.min(1,i*.24+.15)],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});return <div key={i} style={{padding:'22px 26px',opacity,background:active===i?'#1b5260':'#132a3a',borderLeft:'6px solid '+(active===i?accent:'#416578'),borderRadius:10}}>
+      <div style={{fontSize:18,color:'#aac9d9',letterSpacing:2,fontWeight:850}}>ETAPA 0{i+1}</div><div style={{fontSize:27,fontWeight:850,marginTop:6}}>{title}</div>
+    </div>})}
+   </div>
+  </div>
+ </AbsoluteFill>;
+};
+
+/**
+ * V11.7 — Decision dashboard grounded in the actual narration.
+ * No numeric costs or profits are invented.
+ */
+const V117CostDecision = ({shot,brief}) => {
+ const frame=useCurrentFrame();
+ const total=Math.max(1,Number(shot?.durationFrames)||150);
+ const progress=Math.min(1,frame/total);
+ const accent=V7Theme(shot);
+ const reveal=at=>interpolate(progress,[at,Math.min(.99,at+.16)],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+ const inputs=[
+  {label:'TIEMPO INVERTIDO',detail:'¿Cuántas horas necesitas?',color:'#65d0ef'},
+  {label:'COSTES DEL TRABAJO',detail:'¿Qué recursos consumes?',color:'#f6bf77'},
+  {label:'VALOR DEL SERVICIO',detail:'¿Resuelve un problema?',color:'#76e1b3'}
+ ];
+ return <AbsoluteFill style={{fontFamily:FONT,background:'linear-gradient(115deg,#08131e,#0f2b39)',color:'#f5f9ff',overflow:'hidden'}}>
+  <Grid opacity={.032}/>
+  <div style={{position:'absolute',left:92,top:61,color:accent,fontSize:21,fontWeight:900,letterSpacing:3}}>DECISIÓN DE VIABILIDAD</div>
+  <div style={{position:'absolute',left:92,top:112,fontSize:52,fontWeight:900}}>¿Merece la pena cobrar por este trabajo?</div>
+  <div style={{position:'absolute',top:242,left:93,right:93,bottom:139,display:'flex',gap:38}}>
+   <div style={{flex:1,background:'#edf3f5',borderRadius:18,padding:'30px 38px',color:'#183345'}}>
+    <div style={{fontSize:22,fontWeight:900,borderBottom:'2px solid #cbdce4',paddingBottom:17}}>EVALUACIÓN SIN CIFRAS SUPUESTAS</div>
+    {inputs.map((x,i)=>{const op=reveal(.08+i*.19);return <div key={i} style={{opacity:op,marginTop:32}}>
+     <div style={{fontSize:22,fontWeight:900}}>{x.label}</div>
+     <div style={{fontSize:25,marginTop:6,color:'#526f80'}}>{x.detail}</div>
+     <div style={{height:3,background:x.color,opacity:.75,marginTop:16}}/>
+    </div>})}
+   </div>
+   <div style={{width:520,background:'#142d3e',border:'1px solid #3a6478',borderRadius:18,padding:34,display:'flex',flexDirection:'column',justifyContent:'center'}}>
+    <div style={{color:'#9fc8d8',fontSize:21,fontWeight:900,letterSpacing:2}}>CRITERIO DE DECISIÓN</div>
+    <div style={{fontSize:36,fontWeight:900,lineHeight:1.18,marginTop:25}}>Tiempo + costes</div>
+    <div style={{height:3,background:'#598ba1',margin:'23px 0'}}/>
+    <div style={{fontSize:36,fontWeight:900,lineHeight:1.18}}>Valor entregado</div>
+    <div style={{marginTop:33,padding:'18px 21px',borderLeft:'5px solid '+accent,background:'#1b4653',opacity:reveal(.62),fontSize:24,fontWeight:800,lineHeight:1.25}}>Cobrar solo si puedes justificar el valor y sostener el trabajo.</div>
+   </div>
+  </div>
+  <div style={{position:'absolute',left:94,bottom:68,color:'#abc4d0',fontSize:22}}>Esquema cualitativo · sin precios ni beneficios calculados</div>
+ </AbsoluteFill>;
+};
+
+const V11Diagram = ({shot,brief}) => {
+ const kind=String(brief?.diagramType||'');
+ if(['sample_feedback','proposal','demonstrated_skill'].includes(String(brief?.concept||'')))return <V116WorkDocument shot={shot} brief={brief}/>;
+ if(kind==='verification_steps')return <V112Verification shot={shot} brief={brief}/>;
+ if(kind==='weekly_plan')return <V115WeeklyPlan shot={shot} brief={brief}/>;
+ if(kind==='cost_decision')return <V117CostDecision shot={shot} brief={brief}/>;
+ if(kind==='side_by_side'||kind==='cost_decision')return <V114Comparison shot={shot} brief={brief}/>;
+ if(['privacy_flow','side_by_side','cost_decision','workflow_flow','service_deliverable','active_learning','prompt_structure'].includes(kind))return <V113EditorialFlow shot={shot} brief={brief}/>;
+ // Other diagram families retain the existing verified V9 rendering until
+ // their own scene-specific visual treatments have been implemented.
+ return <V9Semantic shot={shot} brief={brief}/>;
+};
+
+
+/** V12 editorial cut: replace generic single-template shots with 3 contextual beats. */
+
+/* V12.1: concrete operational flow, rather than repeated cards. */
+const V121Workflow = ({shot,brief}) => {
+ const frame=useCurrentFrame(), duration=Math.max(1,Number(shot?.durationFrames)||180);
+ const stage=Math.min(2,Math.floor(frame/duration*3));
+ const stageProgress=(frame/duration*3)-stage;
+ const cursor=interpolate(stageProgress,[0,.65,1],[0,1,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+ const data=[
+  {k:'01 · ENTRADA',t:'SOLICITUD',lines:['Asunto: nueva tarea','Estado: recibida','Bandeja de entrada']},
+  {k:'02 · TRATAMIENTO',t:'CLASIFICACIÓN',lines:['Identificar la tarea','Organizar información','Preparar una salida']},
+  {k:'03 · RESULTADO',t:'REVISIÓN',lines:['Resultado preparado','Comprobación humana','Listo para decidir']}
+ ];
+ return <AbsoluteFill style={{fontFamily:FONT,color:'#f4f9fc',background:'linear-gradient(120deg,#06121e,#103045)'}}>
+  <Grid opacity={.03}/>
+  <div style={{position:'absolute',top:65,left:92,color:'#77e3d2',fontSize:22,fontWeight:900,letterSpacing:3}}>FLUJO DE TRABAJO · EJEMPLO</div>
+  <div style={{position:'absolute',top:132,left:92,fontSize:53,fontWeight:900}}>De una solicitud a una salida revisable</div>
+  <div style={{position:'absolute',top:302,left:90,right:90,display:'flex',alignItems:'center',gap:27}}>
+   {data.map((x,i)=><React.Fragment key={i}>
+    <div style={{flex:1,height:490,padding:29,borderRadius:18,background:i===2?'#e4f3ec':'#f0f4f7',color:'#183747',opacity:i<=stage?1:.16,transform:'translateY('+(i===stage?-18-10*Math.sin(stageProgress*Math.PI):0)+'px)',border:i===stage?'6px solid #66dfcb':'6px solid transparent'}}>
+     <div style={{fontSize:21,fontWeight:900,color:'#5d7e8e'}}>{x.k}</div>
+     <div style={{fontSize:34,fontWeight:900,marginTop:43}}>{x.t}</div>
+     {x.lines.map((line,n)=><div key={n} style={{fontSize:24,marginTop:26,paddingBottom:12,borderBottom:'1px solid #c4d4db',opacity:i<stage||n/3<cursor?1:.15}}>{line}</div>)}
+    </div>
+    {i<2&&<div style={{fontSize:57,color:'#66dfcb',fontWeight:900,opacity:stage>i?1:.25}}>→</div>}
+   </React.Fragment>)}
+  </div>
+  <div style={{position:'absolute',bottom:65,left:92,fontSize:23,color:'#aecbd9'}}>Demostración conceptual · no representa una operación ejecutada</div>
+ </AbsoluteFill>;
+};
+/* V12.1: build a real-looking instruction interface, not a generic 3-step slide. */
+const V121Prompt = ({shot,brief}) => {
+ const frame=useCurrentFrame(),duration=Math.max(1,Number(shot?.durationFrames)||180);
+ const stage=Math.min(2,Math.floor(frame/duration*3));
+ const stageProgress=(frame/duration*3)-stage;
+ const cursor=interpolate(stageProgress,[0,.65,1],[0,1,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+ const sections=[['OBJETIVO','Preparar una propuesta de servicio'],['CONTEXTO','Explicar a quién va dirigida y qué necesita'],['FORMATO','Entregar una estructura clara para revisar']];
+ return <AbsoluteFill style={{fontFamily:FONT,color:'#eef7ff',background:'linear-gradient(125deg,#07111c,#113347)'}}>
+  <Grid opacity={.025}/>
+  <div style={{position:'absolute',left:92,top:65,fontSize:22,color:'#74e2cd',fontWeight:900,letterSpacing:3}}>DEMOSTRACIÓN DE PROMPT</div>
+  <div style={{position:'absolute',left:92,top:126,fontSize:52,fontWeight:900}}>Una instrucción mejora al añadir contexto</div>
+  <div style={{position:'absolute',left:92,top:280,width:1100,bottom:135,borderRadius:20,background:'#f0f4f7',color:'#193546',padding:38}}>
+   <div style={{fontSize:25,fontWeight:900,paddingBottom:21,borderBottom:'2px solid #c3d4de'}}>EDITOR DE INSTRUCCIONES · EJEMPLO</div>
+   {sections.map((x,i)=><div key={i} style={{marginTop:28,opacity:stage>i?1:stage===i?.4+.6*cursor:.12,borderLeft:'6px solid '+(stage===i?'#159b89':'#c1d3df'),paddingLeft:22}}>
+    <div style={{fontSize:18,fontWeight:900,color:'#398074',letterSpacing:2}}>{x[0]}</div><div style={{fontSize:28,fontWeight:760,marginTop:8}}>{stage===i?x[1].slice(0,Math.max(1,Math.round(x[1].length*cursor))):x[1]}</div>
+   </div>)}
+   <div style={{position:'absolute',bottom:30,left:38,right:38,background:'#d9eae6',padding:17,borderRadius:9,fontWeight:800,fontSize:23}}>Instrucción en construcción · revisión necesaria</div>
+  </div>
+  <div style={{position:'absolute',right:90,top:340,width:540,padding:30,background:'#16384b',border:'1px solid #4a7688',borderRadius:18}}>
+   <div style={{fontSize:22,fontWeight:900,color:'#a1d7d9'}}>VISTA DEL RESULTADO</div>
+   <div style={{fontSize:33,fontWeight:900,marginTop:27}}>{stage===0?'Petición general':stage===1?'Contexto definido':'Estructura solicitada'}</div><div style={{fontSize:23,color:'#b9f0db',marginTop:26}}>{stage===0?'Falta información':stage===1?'Se especifica el destinatario':'Salida revisable'}</div>
+   <div style={{height:12,width:'90%',background:'#4b8095',marginTop:35,borderRadius:8}}/><div style={{height:12,width:'65%',background:'#4b8095',marginTop:19,borderRadius:8}}/>
+   <div style={{fontSize:23,color:'#b7d5e0',marginTop:36}}>Vista ilustrativa, no generada por IA</div>
+  </div>
+ </AbsoluteFill>;
+};
+const V12EditorialCut = ({shot,brief}) => {
+ const concept=String(brief?.concept||'');
+ if(concept==='workflow')return <V121Workflow shot={shot} brief={brief}/>;
+ if(concept==='prompt')return <V121Prompt shot={shot} brief={brief}/>;
+ if(concept==='proposal'||concept==='sample_feedback'||concept==='demonstrated_skill')return <V116WorkDocument shot={shot} brief={brief}/>;
+ const {source,image}=pickMedia(shot);
+ if(source||image)return <V116StockStory shot={shot} brief={brief}/>;
+ return <V11Diagram shot={shot} brief={brief}/>;
+};
+
 const V8ShotRenderer = ({shot}) => {
   if(shot?.sceneId==='S0'||shot?.locked===true||shot?.preserveExistingRenderer===true) return <LogicHookStage shot={shot}/>;
   const {source,image}=pickMedia(shot);
-  if(source||image) return <V6PhotoStory shot={shot}/>;
   const brief=V9Data(shot);
+  if(brief?.semanticGroundingVerified===true && shot?.editorialTreatment==='contextual_cut_v12' && String(brief.concept||'')!=='effort_cost') return <V12EditorialCut shot={shot} brief={brief}/>;
+  if((source||image) && brief?.semanticGroundingVerified===true && ['sample_feedback','demonstrated_skill','weekly_plan','proposal'].includes(String(brief.concept||''))) return <V116StockStory shot={shot} brief={brief}/>;
+  if(source||image) return <V10StockEditorial shot={shot}/>;
+  if(brief && brief.semanticGroundingVerified===true && V11Kinds.has(String(brief.diagramType||''))) return <V11Diagram shot={shot} brief={brief}/>;
   if(brief) return <V9Semantic shot={shot} brief={brief}/>;
   return <V7ShotRenderer shot={shot}/>;
 };
