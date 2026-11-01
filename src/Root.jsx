@@ -845,72 +845,62 @@ const V9Semantic = ({shot,brief}) => {
 // Punto único de entrada: el Composition existente ya llama V8ShotRenderer.
 // Se mantienen intactas la ruta V4, las escenas S0 y las rutas legacy.
 
-// V10 - stock footage dominates the composition; preserve S0 and V9 fallback.
-const V10Generic = new Set(['subject','action','result','generic','general explainer','intro','hook','clue','object','context']);
-const V10Label = v => String(v ?? '').replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim();
+// V10.1 - Editorial discipline: visuals must never invent narration.
+// Stock stays full-frame; no taxonomy, sample objects or scene placeholders onscreen.
+// Only a narration-grounded, non-generic statement may become a caption.
+const V10Generic = new Set([
+ 'subject','action','result','generic','general explainer','intro',
+ 'hook','clue','object','context','professional','laptop','workspace',
+ 'situación','acción','resultado','sección','explicación','visual'
+]);
+const V10Label = v => String(v ?? '').replace(/[_-]+/g,' ').replace(/\\s+/g,' ').trim();
+const V10IsGeneric = value => {
+ const text=V10Label(value).toLowerCase();
+ return !text || V10Generic.has(text) || /^(intro|hook|section|scene|shot|generic|s[0-9]+)$/i.test(text);
+};
 const V10StockEditorial = ({shot}) => {
-  const frame=useCurrentFrame();
-  const {fps}=useVideoConfig();
-  const duration=Math.max(1,Number(shot?.durationFrames)||150);
-  const progress=clamp((frame+1)/duration,0,1);
-  const {source,image}=pickMedia(shot);
-  const brief=shot?.editorialVisualBrief||{};
-  const objects=(Array.isArray(brief.objects)?brief.objects:[])
-    .map(V10Label).filter(x=>x&&!V10Generic.has(x.toLowerCase())).slice(0,3);
-  const meaningful=objects.length>=2;
-  const accent=V7Theme(shot);
-  const title=V10Label(shot?.sceneTitle);
-  const displayTitle=title&&!/^(intro|hook|section|generic)$/i.test(title);
-  const entering=interpolate(frame,[0,Math.max(1,Math.round(fps*.35))],[0,1],
-    {extrapolateLeft:'clamp',extrapolateRight:'clamp'});
-  const active=objects.length?Math.min(objects.length-1,Math.floor(progress*objects.length)):0;
-  return <AbsoluteFill style={{background:'#05070c',overflow:'hidden'}}>
-    <AbsoluteFill style={{overflow:'hidden'}}>
-      {source?<Video src={source} muted loop style={{
-        width:'100%',height:'100%',objectFit:'cover',
-        transform:'scale('+(1.015+progress*.045)+')',
-        filter:'saturate(1.06) contrast(1.045)'
-      }}/>:image?<Img src={image} style={{
-        width:'100%',height:'100%',objectFit:'cover',
-        transform:'scale('+(1.015+progress*.045)+')'
-      }}/>:<BaseBackground/>}
-    </AbsoluteFill>
-    <AbsoluteFill style={{
-      background:meaningful
-        ?'linear-gradient(90deg,rgba(2,6,12,.03) 0%,rgba(2,6,12,.09) 55%,rgba(2,6,12,.84) 100%)'
-        :'linear-gradient(0deg,rgba(2,6,12,.48) 0%,transparent 28%,transparent 85%,rgba(2,6,12,.2) 100%)',
+ const frame=useCurrentFrame();
+ const {fps}=useVideoConfig();
+ const duration=Math.max(1,Number(shot?.durationFrames)||150);
+ const progress=clamp((frame+1)/duration,0,1);
+ const {source,image}=pickMedia(shot);
+ const brief=shot?.editorialVisualBrief||{};
+ const narrationMatched=brief.contextFromNarration===true &&
+   typeof brief.voiceoverExcerpt==='string' &&
+   brief.voiceoverExcerpt.trim().length>=15;
+ const headline=V10Label(shot?.textElements?.[0]||shot?.sceneTitle);
+ const showHeadline=narrationMatched && !V10IsGeneric(headline) &&
+   headline.length>=9 && headline.length<=105;
+ const accent=V7Theme(shot);
+ const reveal=interpolate(frame,[0,Math.max(1,Math.round(fps*.32))],[0,1],
+   {extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+ // Small, deliberate camera movement rather than decorative UI panels.
+ const zoom=1.008+progress*.029;
+ const translate=interpolate(progress,[0,1],[-.6,.6]);
+ return <AbsoluteFill style={{background:'#04070c',overflow:'hidden'}}>
+   <AbsoluteFill style={{overflow:'hidden'}}>
+     {source?<Video src={source} muted loop style={{
+       width:'100%',height:'100%',objectFit:'cover',
+       transform:`translateX(${translate}%) scale(${zoom})`,
+       filter:'saturate(1.07) contrast(1.055)'
+     }}/>:image?<Img src={image} style={{
+       width:'100%',height:'100%',objectFit:'cover',
+       transform:`translateX(${translate}%) scale(${zoom})`
+     }}/>:<BaseBackground/>}
+   </AbsoluteFill>
+   <AbsoluteFill style={{
+      background:'linear-gradient(0deg,rgba(1,6,13,.42) 0%,transparent 20%,transparent 78%,rgba(1,6,13,.12) 100%)',
       pointerEvents:'none'
-    }}/>
-    {displayTitle&&<div style={{
-      position:'absolute',left:72,top:52,maxWidth:880,
-      opacity:entering,transform:'translateY('+((1-entering)*15)+'px)',
-      padding:'12px 21px',borderRadius:12,background:'rgba(3,9,17,.66)',
-      border:'1px solid rgba(255,255,255,.16)',color:'#fff',
-      fontFamily:FONT,fontSize:26,fontWeight:800,lineHeight:1.2
-    }}>{shortText(title,64)}</div>}
-    {meaningful&&<div style={{
-      position:'absolute',right:47,top:205,bottom:160,width:475,
-      display:'flex',flexDirection:'column',justifyContent:'center',gap:17,
-      opacity:entering
-    }}>
-      <div style={{fontSize:17,color:accent,fontWeight:900,
-        fontFamily:FONT,letterSpacing:3}}>CONTEXTO VISUAL</div>
-      {objects.map((label,i)=><div key={i} style={{
-        padding:'20px 24px',borderRadius:16,
-        background:i===active?'rgba(12,28,45,.92)':'rgba(8,18,31,.75)',
-        border:'1px solid '+(i===active?accent:'rgba(255,255,255,.15)'),
-        opacity:clamp(frame/(fps*.35)-i*.4,0,1)
-      }}>
-        <div style={{fontSize:16,color:accent,fontWeight:900}}>{String(i+1).padStart(2,'0')}</div>
-        <div style={{marginTop:6,fontFamily:FONT,fontSize:28,fontWeight:800,
-          color:'#fff',lineHeight:1.15,overflowWrap:'anywhere'}}>{shortText(label,48)}</div>
-      </div>)}
-    </div>}
-    <div style={{position:'absolute',left:72,right:72,bottom:46,height:4,
-      borderRadius:8,background:'rgba(255,255,255,.28)'}}>
-      <div style={{height:'100%',width:(progress*100)+'%',borderRadius:8,background:accent}}/>
-    </div>
-  </AbsoluteFill>;
+   }}/>
+   {showHeadline&&<div style={{
+      position:'absolute',left:78,bottom:100,maxWidth:1120,
+      opacity:reveal,transform:`translateY(${(1-reveal)*16}px)`,
+      background:'rgba(3,9,18,.72)',borderLeft:`5px solid ${accent}`,
+      padding:'18px 28px',borderRadius:8,
+      color:'#fff',fontFamily:FONT,fontSize:38,fontWeight:790,
+      lineHeight:1.14,textShadow:'0 2px 9px rgba(0,0,0,.32)'
+   }}>{shortText(headline,94)}</div>}
+ </AbsoluteFill>;
 };
 
 const V8ShotRenderer = ({shot}) => {
