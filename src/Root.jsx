@@ -1242,6 +1242,8 @@ const V121Workflow = ({shot,brief}) => {
 const V121Prompt = ({shot,brief}) => {
  const frame=useCurrentFrame(),duration=Math.max(1,Number(shot?.durationFrames)||180);
  const stage=Math.min(2,Math.floor(frame/duration*3));
+ const stageProgress=(frame/duration*3)-stage;
+ const cursor=interpolate(stageProgress,[0,.65,1],[0,1,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
  const sections=[['OBJETIVO','Preparar una propuesta de servicio'],['CONTEXTO','Explicar a quién va dirigida y qué necesita'],['FORMATO','Entregar una estructura clara para revisar']];
  return <AbsoluteFill style={{fontFamily:FONT,color:'#eef7ff',background:'linear-gradient(125deg,#07111c,#113347)'}}>
   <Grid opacity={.025}/>
