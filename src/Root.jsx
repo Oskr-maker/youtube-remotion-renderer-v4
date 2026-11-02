@@ -1308,6 +1308,9 @@ const V8ShotRenderer = ({shot}) => {
   if(shot?.sceneId==='S0'||shot?.locked===true||shot?.preserveExistingRenderer===true) return <LogicHookStage shot={shot}/>;
   const {source,image}=pickMedia(shot);
   const brief=V9Data(shot);
+  // Film-first: when a previously accepted real video/photo exists, use it.
+  // Never override S0 or fabricate a media URL.
+  if(source||image) return <V10StockEditorial shot={shot}/>;
   const semanticReady=brief?.semanticGroundingVerified===true && (shot?.semanticPlan?.editorialDesign?.visualDesignReady===true || shot?.uiMotionPlan?.editorialDesign?.visualDesignReady===true || shot?.editorialTreatment==='contextual_cut_v12');
   if(semanticReady && ['workflow','prompt','proposal','sample_feedback','demonstrated_skill'].includes(String(brief.concept||'')))return <V12EditorialCut shot={shot} brief={brief}/>;
   if(semanticReady && brief.concept==='comparison')return <V9Comparison shot={shot} brief={brief} accent={V7Theme(shot)}/>;
