@@ -198,6 +198,36 @@ app.post(
         });
       }
 
+      // Editorial quality gate on TEST branch: never spend render time on a
+      // preview that contains zero real footage or approved photography.
+      // Preserve existing request contract, but expose a clear actionable error.
+      const mediaOf = (shot) => {
+        const candidates = [
+          shot?.stock, shot?.uiMotionPlan?.stock, shot?.visual?.stock,
+          shot?.visualAsset, shot?.acceptedStockAsset?.render,
+          shot?.visual?.visualAsset
+        ];
+        for (const x of candidates) {
+          if (!x || typeof x !== 'object') continue;
+          const url = String(x.url || x.src || '');
+          const approved = x.available === true ||
+            x.accepted === true || x.role === 'primary' && x.method === 'external_video';
+          if (approved && /^https?:\\/\\//i.test(url)) return url;
+        }
+        return null;
+      };
+      const allMedia = manifest.timelineShots.map(mediaOf).filter(Boolean);
+      if (!allMedia.length) {
+        return res.status(422).json({
+          status: 'editorial_blocked',
+          reason: 'NO_APPROVED_REAL_MEDIA',
+          message: 'No se renderiza una muestra compuesta solo por graficos. Selecciona y adjunta metraje aprobado al manifest antes de renderizar.',
+          shots: manifest.timelineShots.length,
+          realMediaShots: 0,
+          nextStep: 'Conectar recursos reales aprobados del nodo Accepted Stock Asset al manifest final'
+        });
+      }
+
       const serveUrl =
         await getServeUrl();
 
