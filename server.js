@@ -107,6 +107,50 @@ const adaptManifestV8 = (outer) => {
     renderTarget:{...m.renderTarget,compositionId:m.renderTarget?.compositionId||'YouTubeV4'}};
 };
 
+
+/**
+ * Preflight for film-first longform.
+ * POST /audit-v8 with a manifest JSON object.
+ * Prevents equating "render succeeded" with a watchable video.
+ */
+app.post('/audit-v8', (req, res) => {
+ try {
+  const root=req.body||{};
+  const m=Array.isArray(root.manifest?.shots)?root.manifest:root;
+  const shots=Array.isArray(m.shots)?m.shots:
+    Array.isArray(m.timelineShots)?m.timelineShots:[];
+  if(!shots.length) return res.status(400).json({ok:false,error:'No shots in manifest'});
+  let realVideo=0,realImage=0,abstract=0,missing=0;
+  const details=shots.map(sh=>{
+   const stock=sh.uiMotionPlan?.stock||sh.stock||sh.visual?.stock||{};
+   const media=sh.visualAsset||sh.visual||{};
+   const url=String((stock.available===true?stock.url:null)||((media.accepted===true||media.ready===true)&&media.url)||'');
+   const image=String(sh.imageUrl||media.imageUrl||'');
+   const valid=url.startsWith('https://')||url.startsWith('http://');
+   const isImage=Boolean(image&&/^https?:\/\//.test(image))||(/\.(jpe?g|png|webp)(\?|$)/i.test(url));
+   const type=valid?(isImage?'image':'video'):'graphics';
+   if(type==='video')realVideo++;
+   else if(type==='image')realImage++;
+   else abstract++;
+   if(!valid&&!image&&!sh.uiMotionPlan?.editorialDesign?.visualDesignReady)missing++;
+   return {shotId:sh.shotId||null,sceneId:sh.sceneId||null,type,approvedMediaURL:valid||Boolean(image)};
+  });
+  const covered=realVideo+realImage,ratio=covered/shots.length;
+  const repeated=details.reduce((a,x,i)=>a+(i>=2&&x.type==='graphics'&&details[i-1].type==='graphics'&&details[i-2].type==='graphics'?1:0),0);
+  const reasons=[];
+  if(ratio<.35) reasons.push('REAL_MEDIA_COVERAGE_LOW');
+  if(repeated>0) reasons.push('THREE_OR_MORE_GRAPHICS_IN_SEQUENCE');
+  if(missing>0) reasons.push('SHOTS_WITHOUT_MEDIA_OR_SPECIFIC_DESIGN');
+  return res.json({
+   ok:true,filmFirstReady:reasons.length===0,renderAllowed:true,
+   totalShots:shots.length,realVideo,realImage,graphicsOnly:abstract,
+   mediaCoveragePercent:Math.round(100*ratio),missingDesign:missing,
+   threeGraphicsStreakCount:repeated,reasons,shots:details,
+   note:'Editorial heuristic only; cannot verify actual clip content, license, or retention.'
+  });
+ }catch(e){return res.status(400).json({ok:false,error:e.message});}
+});
+
 app.post(
   '/render-v4',
   upload.single('audio'),
