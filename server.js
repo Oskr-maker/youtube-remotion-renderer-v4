@@ -75,6 +75,38 @@ app.get('/health', async (req, res) => {
 // RENDER
 // ======================================================
 
+
+// V8 manifest contract adapter: legacy timeline and n8n semantic shots.
+const adaptManifestV8 = (outer) => {
+  const m=outer?.manifest && Array.isArray(outer.manifest.shots)?outer.manifest:outer;
+  if (Array.isArray(m?.timelineShots) && m.timelineShots.length && m.motionGraphicsReady) return m;
+  if (!Array.isArray(m?.shots) || !m.shots.length) throw new Error('Missing shots or timelineShots');
+  if(m.manifestQC?.structuralQC===false || m.manifestQC?.timelineConsistent===false) throw new Error('Structural QC failed');
+  const fps=Number(m.fps)||30;
+  if(!Number.isFinite(fps)||fps<1||fps>120)throw new Error('Invalid fps');
+  const ids=new Set(); let previousEnd=-1;
+  const timelineShots=[...m.shots].sort((a,b)=>Number(a.productionSequence)-Number(b.productionSequence)).map(sh=>{
+    if(!sh?.shotId||ids.has(sh.shotId))throw new Error('Duplicate or missing shotId');
+    ids.add(sh.shotId);
+    const start=Number(sh.globalStartSec),duration=Number(sh.durationSec);
+    if(!Number.isFinite(start)||!Number.isFinite(duration)||start<0||duration<=0)throw new Error('Invalid timing: '+sh.shotId);
+    const startFrame=Math.round(start*fps),endFrame=Math.round((start+duration)*fps);
+    if(startFrame<previousEnd-1)throw new Error('Overlapping shot: '+sh.shotId);
+    previousEnd=endFrame;
+    const asset=sh.visualAsset||{},plan=sh.uiMotionPlan||{};
+    const locked=sh.sceneId==='S0'||asset.locked===true||sh.visualStrategy?.locked===true;
+    return {...sh,startFrame,durationFrames:Math.max(1,endFrame-startFrame),visual:asset,
+      template:locked?(asset.template||sh.template):(plan.template||sh.template||asset.template||'generic'),
+      layout:locked?(asset.layout||sh.layout):(plan.layout||sh.layout||asset.layout||'object_explainer'),
+      locked,preserveExistingRenderer:locked,semanticPlan:plan,
+      editorialTreatment:(!locked&&plan.editorialDesign?.visualDesignReady===true)?'contextual_cut_v12':sh.editorialTreatment
+    };
+  });
+  const totalDurationFrames=Math.max(...timelineShots.map(sh=>sh.startFrame+sh.durationFrames));
+  return {...m,timelineShots,totalDurationFrames,fps,motionGraphicsReady:true,
+    renderTarget:{...m.renderTarget,compositionId:m.renderTarget?.compositionId||'YouTubeV4'}};
+};
+
 app.post(
   '/render-v4',
   upload.single('audio'),
@@ -92,9 +124,9 @@ app.post(
       let manifest;
 
       try {
-        manifest = JSON.parse(
+        manifest = adaptManifestV8(JSON.parse(
           req.body.manifest
-        );
+        ));
       } catch (error) {
         return res.status(400).json({
           status: 'error',
