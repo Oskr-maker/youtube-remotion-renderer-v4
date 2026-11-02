@@ -1341,7 +1341,8 @@ const V8ShotRenderer = ({shot}) => {
   if(shot?.sceneId==='S0'||shot?.locked===true||shot?.preserveExistingRenderer===true) return <LogicHookStage shot={shot}/>;
   const {source,image}=pickMedia(shot);
   const brief=V9Data(shot);
-  if(shot?.sceneId==='S10' && [4,5,6,7].includes(Number(String(shot.shotId||'').split('_').pop())) && !source && !image) return <S10DecisionSequence shot={shot}/>;
+  // S10 no longer overrides the director with static triple-card template.
+  // Media-first route remains available for approved video and stills.
   // Film-first: when a previously accepted real video/photo exists, use it.
   // Never override S0 or fabricate a media URL.
   if(source||image) return <V13FilmScene shot={shot}/>;
