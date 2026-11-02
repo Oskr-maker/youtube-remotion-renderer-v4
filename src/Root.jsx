@@ -1274,7 +1274,37 @@ const V12EditorialCut = ({shot,brief}) => {
  return <V11Diagram shot={shot} brief={brief}/>;
 };
 
+
+const S10DecisionSequence = ({shot}) => {
+ const frame=useCurrentFrame(),{fps}=useVideoConfig();
+ const n=Number(String(shot.shotId||'').split('_').pop()),p=frame/Math.max(1,shot.durationFrames||210);
+ const appear=i=>spring({frame:Math.max(0,frame-i*fps*.3),fps,config:{damping:19,stiffness:90}});
+ const entries=n===4?
+ [['DELEGAR','Ordenar notas','Tarea reversible'],['ASISTIR Y REVISAR','Comprobar fuentes','Validación humana'],['NO AUTOMATIZAR','Decisión sensible','Detener ejecución']]:
+ n===5?[['SOLICITUD','Decisión de impacto','No enviar'],['RIESGO','Faltan comprobaciones','Posible daño'],['CONTROL','Permiso humano','Proceso detenido']]:
+ n===6?[['RESPUESTA','Explicación generada','Sin validar'],['EVIDENCIA','Comprobar datos','Sin inventar fuentes'],['PERSONA','Aceptar o corregir','Revisión necesaria']]:
+ [['SELECCIONAR','Tarea repetitiva','Prueba pequeña'],['COMPROBAR','Tiempo con revisión','Medir el esfuerzo'],['DECIDIR','¿Hay ahorro real?','Conservar o descartar']];
+ const heading={4:'¿DELEGAR, REVISAR O DETENER?',5:'NO AUTOMATIZAR UNA DECISIÓN SENSIBLE',6:'COMPROBAR ANTES DE CONFIAR',7:'MEDIR EL RESULTADO REAL'}[n];
+ const accent=['#45c7e0','#75e5b7','#ff927e'];
+ return <AbsoluteFill style={{fontFamily:FONT,color:'#f5faff',background:'linear-gradient(125deg,#061120,#102b3c)'}}>
+  <Grid opacity={.025}/>
+  <div style={{position:'absolute',top:82,left:104,color:'#80dcdf',fontSize:22,fontWeight:900,letterSpacing:3}}>DECISIONES DE USO · SIMULACIÓN ILUSTRATIVA</div>
+  <div style={{position:'absolute',top:139,left:104,right:100,fontWeight:950,fontSize:63,lineHeight:1.07}}>{heading}</div>
+  <div style={{position:'absolute',top:340,left:105,right:105,bottom:195,display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:29}}>
+   {entries.map((x,i)=><div key={i} style={{padding:36,borderRadius:25,background:'rgba(12,31,46,.96)',border:'2px solid '+accent[i],boxShadow:'0 22px 70px rgba(0,0,0,.32)',opacity:appear(i),transform:`translateY(${(1-appear(i))*45}px)`}}>
+    <div style={{fontSize:23,fontWeight:950,color:accent[i],letterSpacing:2}}>{x[0]}</div>
+    <div style={{fontSize:45,fontWeight:900,lineHeight:1.1,marginTop:78}}>{x[1]}</div>
+    <div style={{fontSize:27,color:'#b4d0dc',marginTop:35}}>{x[2]}</div>
+    <div style={{height:10,width:`${Math.min(100,p*300)}%`,borderRadius:8,background:accent[i],marginTop:51}}/>
+   </div>)}
+  </div>
+  <div style={{position:'absolute',bottom:85,left:110,right:110,fontSize:27,color:'#a8c8d2'}}>{n===4?'La automatización cambia según el riesgo':n===5?'Un sistema responsable debe poder detenerse':n===6?'Una respuesta convincente no es una prueba':'Conservar solo si ahorra trabajo y mantiene el control'}</div>
+  <div style={{position:'absolute',bottom:32,left:110,fontSize:17,color:'#7898a7'}}>Ejemplo visual ficticio · No implica una ejecución real</div>
+ </AbsoluteFill>;
+};
+
 const V8ShotRenderer = ({shot}) => {
+ if(shot?.sceneId==='S10' && [4,5,6,7].includes(Number(String(shot.shotId||'').split('_').pop()))) return <S10DecisionSequence shot={shot}/>;
   if(shot?.sceneId==='S0'||shot?.locked===true||shot?.preserveExistingRenderer===true) return <LogicHookStage shot={shot}/>;
   const {source,image}=pickMedia(shot);
   const brief=V9Data(shot);
