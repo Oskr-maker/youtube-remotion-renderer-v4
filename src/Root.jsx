@@ -1278,7 +1278,10 @@ const V8ShotRenderer = ({shot}) => {
   if(shot?.sceneId==='S0'||shot?.locked===true||shot?.preserveExistingRenderer===true) return <LogicHookStage shot={shot}/>;
   const {source,image}=pickMedia(shot);
   const brief=V9Data(shot);
-  if(brief?.semanticGroundingVerified===true && shot?.editorialTreatment==='contextual_cut_v12' && String(brief.concept||'')!=='effort_cost') return <V12EditorialCut shot={shot} brief={brief}/>;
+  const semanticReady=brief?.semanticGroundingVerified===true && (shot?.semanticPlan?.editorialDesign?.visualDesignReady===true || shot?.uiMotionPlan?.editorialDesign?.visualDesignReady===true || shot?.editorialTreatment==='contextual_cut_v12');
+  if(semanticReady && ['workflow','prompt','proposal','sample_feedback','demonstrated_skill'].includes(String(brief.concept||'')))return <V12EditorialCut shot={shot} brief={brief}/>;
+  if(semanticReady && brief.concept==='comparison')return <V9Comparison shot={shot} brief={brief} accent={V7Theme(shot)}/>;
+  if(semanticReady && ['weekly_plan','verification','privacy','effort_cost'].includes(String(brief.concept||'')))return <V11Diagram shot={shot} brief={brief}/>;
   if((source||image) && brief?.semanticGroundingVerified===true && ['sample_feedback','demonstrated_skill','weekly_plan','proposal'].includes(String(brief.concept||''))) return <V116StockStory shot={shot} brief={brief}/>;
   if(source||image) return <V10StockEditorial shot={shot}/>;
   if(brief && brief.semanticGroundingVerified===true && V11Kinds.has(String(brief.diagramType||''))) return <V11Diagram shot={shot} brief={brief}/>;
