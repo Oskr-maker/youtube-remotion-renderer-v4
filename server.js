@@ -5,6 +5,7 @@ import os from 'os';
 import path from 'path';
 import {fileURLToPath} from 'url';
 import {spawnSync} from 'child_process';
+import {searchEditorialMedia} from './src/mediaSearch.js';
 
 import {bundle} from '@remotion/bundler';
 import {
@@ -69,6 +70,15 @@ app.get('/health', async (req, res) => {
       stack: error.stack
     });
   }
+});
+
+// Discovery only. No candidate is accepted automatically.
+// n8n HTTP Request POST JSON: {"query":"...","limit":6}
+app.post('/media/search',async(req,res)=>{
+ try{
+  const result=await searchEditorialMedia(req.body?.query,{limit:req.body?.limit,providers:req.body?.providers||['commons','nasa','pexels']});
+  res.json(result);
+ }catch(error){res.status(400).json({error:String(error.message||error)});}
 });
 
 // ======================================================
