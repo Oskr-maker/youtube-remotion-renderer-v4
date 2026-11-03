@@ -222,7 +222,7 @@ app.post(
           const url = String(x.url || x.src || '');
           const approved = x.available === true ||
             x.accepted === true || x.role === 'primary' && x.method === 'external_video';
-          if (approved && /^https?:\\/\\//i.test(url)) return url;
+          if (approved && (url.startsWith('https://') || url.startsWith('http://'))) return url;
         }
         return null;
       };
