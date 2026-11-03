@@ -1,8 +1,8 @@
 /**
- * PREP - Cinematic Search Queries V2
+ * PREP - Cinematic Search Queries V2.1
  * n8n Code | Run Once for All Items
  * INPUT: V6.8 - ENRICH - Semantic Assets (75 shot items)
- * OUTPUT: <= 2 focused research queries per eligible scene
+ * OUTPUT: 1 focused research query per eligible scene; 10 maximum for S1..S10
  * NOT a final shot-to-asset assignment; no invented footage or auto approval.
  */
 const A=x=>Array.isArray(x)?x:[];
@@ -32,7 +32,7 @@ const output=[],seen=new Set();
 for(const [scene,shots] of byScene){
  const queries=plans[scene]||[];
  const sorted=[...shots].sort((a,b)=>(Number(a.productionSequence)||0)-(Number(b.productionSequence)||0));
- for(let i=0;i<Math.min(queries.length,2);i++){
+ for(let i=0;i<Math.min(queries.length,1);i++){
   const sh=sorted[Math.min(i,sorted.length-1)];
   const query=T(queries[i]);
   if(!query||seen.has(query))continue;
@@ -42,7 +42,7 @@ for(const [scene,shots] of byScene){
    context:T(sh.narrationContext?.visualContextText||sh.narrationContext?.fullSceneNarration||sh.voiceoverExcerpt).slice(0,450),
    providers:['openverse','commons'],
    mediaTypes:['image','video'],limit:6,
-   queryPlanVersion:'v2',autoApproved:false,
+   queryPlanVersion:'v2.1',autoApproved:false,
    mergeRequiresHumanOrVerifiedSemanticQC:true
   }});
  }
