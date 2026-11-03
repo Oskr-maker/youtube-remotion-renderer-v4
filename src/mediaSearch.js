@@ -1,61 +1,108 @@
 /**
- * Multi-source documentary footage discovery for n8n.
- * Free official APIs: Wikimedia Commons, NASA Image Library, optional Pexels.
- * NO auto-approval: each candidate still requires relevance, rights and codec QA.
- * No new npm dependencies. Server-side Node 18+ fetch.
+ * Cinema-first discovery V2.2
+ * Free sources: Openverse (licensed photos), Wikimedia Commons (photos and clips),
+ * NASA (only explicit science/space topics). Pexels intentionally disabled.
+ * No auto approval. Lexical rank is a conservative prefilter, NOT semantic verification.
  */
-const clean = s=>String(s||'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,700);
-const timeoutFetch = async(url,headers={})=>{
- const r=await fetch(url,{headers,signal:AbortSignal.timeout(10000)});
- if(!r.ok)throw Error('HTTP '+r.status);
+const trim = v => String(v ?? '').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+const urlOK = v => typeof v === 'string' && /^https?:\/\//i.test(v);
+const stop = new Set('the and for with from this that into some about video image photo photos film footage shot person people working work desk office on at of to in a an by de del la el los las en un una y para con por al que se como es sobre intro hook chapter experiment test example section summary conclusion'.split(' '));
+const tokens = s => [...new Set(trim(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').match(/[a-z0-9]{3,}/g)||[])].filter(x=>!stop.has(x));
+const errorResponse = r => new Error('HTTP '+r.status);
+async function readJSON(url,headers={}){
+ const r=await fetch(url,{headers,signal:AbortSignal.timeout(12000)});
+ if(!r.ok)throw errorResponse(r);
  return r.json();
+}
+const record=(provider,mediaType,title,url,sourcePage,license,extra={})=>({
+ provider,mediaType,title:trim(title).slice(0,320),url,sourcePage,
+ license:license||'review_required',approved:false,rightsVerified:false,renderVerified:false,
+ semanticVerified:false,...extra
+});
+const safeLicense=x=>/^(?:CC0|Public domain|CC BY(?: [234]\.0)?|CC BY-SA(?: [234]\.0)?)$/i.test(trim(x));
+const mediaScore=(candidate,query)=>{
+ const q=tokens(query),text=[candidate.title,candidate.description||'',(candidate.tags||[]).join(' ')].join(' ');
+ const t=new Set(tokens(text));
+ if(!q.length)return 0;
+ const matches=q.filter(x=>t.has(x)||[...t].some(y=>y.startsWith(x)&&x.length>=5)).length;
+ return Math.round(100*matches/q.length);
 };
-const U=x=>typeof x==='string'&&/^https?:\/\//i.test(x);
-const C=(provider,title,url,page,license,meta={})=>({provider,title,url,sourcePage:page,license:license||'review_required',approved:false,rightsVerified:false,renderVerified:false,...meta});
-async function commons(q,limit){
- const params=new URLSearchParams({action:'query',generator:'search',gsrsearch:'filetype:video '+q,gsrnamespace:'6',gsrlimit:String(limit),prop:'imageinfo',iiprop:'url|extmetadata|mime',format:'json',origin:'*'});
- const j=await timeoutFetch('https://commons.wikimedia.org/w/api.php?'+params,{'User-Agent':'YouTubeFilmResearch/1.0 (editorial)'});
+async function commons(query,n,type){
+ const kind=type==='image'?'filetype:bitmap':'filetype:video';
+ const params=new URLSearchParams({action:'query',generator:'search',
+  gsrsearch:kind+' '+query,gsrnamespace:'6',gsrlimit:String(Math.min(20,n*3)),
+  prop:'imageinfo',iiprop:'url|extmetadata|mime|size',format:'json'});
+ const j=await readJSON('https://commons.wikimedia.org/w/api.php?'+params,
+   {'User-Agent':'CinemaFirstResearch/2.2 (non-commercial metadata research)'});
  return Object.values(j.query?.pages||{}).flatMap(p=>{
-  const v=p.imageinfo?.[0],x=v?.extmetadata||{};
-  if(!U(v?.url))return [];
-  return [C('wikimedia',clean(x.ImageDescription?.value)||p.title,v.url,v.descriptionurl||'https://commons.wikimedia.org/wiki/'+encodeURIComponent(p.title.replaceAll(' ','_')),clean(x.LicenseShortName?.value)||'review_required',{mime:v.mime,credit:clean(x.Artist?.value),usageTerms:clean(x.UsageTerms?.value),licenseUrl:x.LicenseUrl?.value||null})];
+  const info=p.imageinfo?.[0],x=info?.extmetadata||{},mime=String(info?.mime||'');
+  if(!urlOK(info?.url))return [];
+  if(type==='image'&&!mime.startsWith('image/'))return [];
+  if(type==='video'&&!mime.startsWith('video/'))return [];
+  const license=trim(x.LicenseShortName?.value),title=trim(p.title.replace(/^File:/,'').replace(/\.[^.]+$/,'').replaceAll('_',' '));
+  return [record('wikimedia',type,title,info.url,info.descriptionurl,license,{
+   mime,credit:trim(x.Artist?.value).slice(0,200),licenseUrl:x.LicenseUrl?.value||null,
+   width:info.width,height:info.height,licenseMetadataPresent:!!license,
+   rightsReviewNeeded:true})];
  });
 }
-async function nasa(q,limit){
- const u='https://images-api.nasa.gov/search?'+new URLSearchParams({q,media_type:'video',page_size:String(limit)});
- const j=await timeoutFetch(u);
- const results=await Promise.allSettled((j.collection?.items||[]).slice(0,limit).map(async x=>{
+async function openverse(query,n){
+ const params=new URLSearchParams({q:query,page_size:String(Math.min(20,n*3)),mature:'false'});
+ const j=await readJSON('https://api.openverse.org/v1/images/?'+params);
+ return (j.results||[]).flatMap(x=>{
+  if(!urlOK(x.url)||!urlOK(x.foreign_landing_url))return [];
+  const license=String(x.license||'').toLowerCase();
+  if(!['cc0','by','by-sa'].includes(license))return [];
+  const label=license==='cc0'?'CC0':license==='by'?'CC BY':'CC BY-SA';
+  return [record('openverse','image',x.title,x.url,x.foreign_landing_url,label,{
+   description:trim(x.title||''),tags:(x.tags||[]).map(t=>String(t.name||t)).slice(0,15),
+   credit:x.creator||null,licenseUrl:x.license_url||null,width:x.width,height:x.height,
+   attribution:x.attribution||null,rightsReviewNeeded:true})];
+ });
+}
+async function nasa(query,n,type){
+ const params=new URLSearchParams({q:query,media_type:type==='image'?'image':'video',page_size:String(Math.min(10,n*2))});
+ const j=await readJSON('https://images-api.nasa.gov/search?'+params);
+ const settled=await Promise.allSettled((j.collection?.items||[]).slice(0,n*2).map(async x=>{
   const d=x.data?.[0]||{},href=x.href;
-  if(!U(href))return null;
-  const files=await timeoutFetch(href);
-  const video=(Array.isArray(files)?files:[]).find(z=>/\.(mp4|webm)(\?.*)?$/i.test(z));
-  if(!U(video))return null;
-  return C('nasa',d.title||'',video,'https://images.nasa.gov/details/'+encodeURIComponent(d.nasa_id||''),'review_nasa_guidelines',{description:clean(d.description),nasaId:d.nasa_id,credit:'NASA',rightsNote:'Check item-specific third-party rights and NASA media guidelines.'});
+  if(!urlOK(href))return null;
+  const links=await readJSON(href);
+  const ext=type==='image'?/\.(jpe?g|png)(\?.*)?$/i:/\.(mp4|webm)(\?.*)?$/i;
+  const media=(Array.isArray(links)?links:[]).find(x=>ext.test(x));
+  if(!urlOK(media))return null;
+  return record('nasa',type,d.title,media,'https://images.nasa.gov/details/'+encodeURIComponent(d.nasa_id||''),
+   'review_nasa_guidelines',{description:trim(d.description).slice(0,300),credit:'NASA',
+    nasaId:d.nasa_id,rightsReviewNeeded:true});
  }));
- return results.filter(x=>x.status==='fulfilled'&&x.value).map(x=>x.value);
+ return settled.filter(x=>x.status==='fulfilled'&&x.value).map(x=>x.value);
 }
-async function pexels(q,limit){
- if(!process.env.PEXELS_API_KEY)return [];
- const u='https://api.pexels.com/v1/videos/search?'+new URLSearchParams({query:q,per_page:String(limit),orientation:'landscape'});
- const j=await timeoutFetch(u,{Authorization:process.env.PEXELS_API_KEY});
- return (j.videos||[]).flatMap(v=>{
-  const files=(v.video_files||[]).filter(f=>U(f.link)&&f.file_type==='video/mp4');
-  files.sort((a,b)=>Math.abs((a.width||0)-1920)-Math.abs((b.width||0)-1920));
-  const f=files[0];
-  if(!f)return [];
-  return [C('pexels',v.user?.name||'Pexels stock video',f.link,v.url,'pexels_license_review',{width:f.width,height:f.height,durationSec:v.duration,creator:v.user?.name,creatorUrl:v.user?.url,rightsNote:'Review Pexels API attribution and license requirements'})];
- });
-}
-export async function searchEditorialMedia(query,{limit=6,providers=['commons','nasa','pexels']}={}){
- const q=String(query||'').trim().slice(0,100);
- if(q.length<3)throw Error('Search query must be at least 3 characters');
- const n=Math.min(12,Math.max(1,Number(limit)||6));
- const supported={commons,nasa,pexels};
- const selected=providers.filter(p=>supported[p]);
- const settled=await Promise.allSettled(selected.map(p=>supported[p](q,n)));
- const errors=[],candidates=[];
- settled.forEach((r,i)=>{if(r.status==='fulfilled')candidates.push(...r.value);else errors.push({provider:selected[i],error:String(r.reason?.message||r.reason)})});
- const unique=[...new Map(candidates.map(c=>[c.url,c])).values()];
- return {query:q,candidates:unique,providerErrors:errors,sourceCount:selected.length,autoApproved:false,
-  note:'Candidates only. Check story relevance, rights, attribution, download, codec and Remotion accessibility before approval.'};
+const forbidden=/^(?:hook|intro|cta|outro|conclusion|section|experiment|experimento|capitulo|introduccion|resumen)(?:\s+\d+)?$/i;
+const science=/(?:nasa|astronaut|rocket|space|planet|satellite|galaxy|telescope|mars|orbit|moon|solar|astronomi|espacio|planeta|cohete|misio[nn])/i;
+export async function searchEditorialMedia(query,{limit=6,providers=['openverse','commons'],mediaTypes=['image','video'],context='',sceneId=''}={}){
+ const q=trim(query).slice(0,130),n=Math.max(1,Math.min(8,Number(limit)||5));
+ if(q.length<3||forbidden.test(q))return {query:q,candidates:[],providerErrors:[],
+  sourceCount:0,autoApproved:false,blockedReason:'GENERIC_OR_INVALID_QUERY',shotContext:trim(context).slice(0,200)};
+ const types=Array.isArray(mediaTypes)?mediaTypes.filter(x=>x==='image'||x==='video'):['image','video'];
+ const requested=Array.isArray(providers)?providers:[];
+ const tasks=[];
+ if(requested.includes('openverse')&&types.includes('image'))tasks.push({name:'openverse',fn:()=>openverse(q,n)});
+ if(requested.includes('commons')){
+  if(types.includes('image'))tasks.push({name:'commons_images',fn:()=>commons(q,n,'image')});
+  if(types.includes('video'))tasks.push({name:'commons_videos',fn:()=>commons(q,n,'video')});
+ }
+ // NASA is deliberately not searched for office/AI/productivity clips.
+ if(requested.includes('nasa')&&science.test(q+' '+context)){
+  if(types.includes('video'))tasks.push({name:'nasa_videos',fn:()=>nasa(q,n,'video')});
+  if(types.includes('image'))tasks.push({name:'nasa_images',fn:()=>nasa(q,n,'image')});
+ }
+ const results=await Promise.allSettled(tasks.map(t=>t.fn()));
+ const errors=[],all=[];
+ results.forEach((r,i)=>r.status==='fulfilled'?all.push(...r.value):errors.push({provider:tasks[i].name,error:String(r.reason?.message||r.reason)}));
+ const ranked=[...new Map(all.filter(x=>urlOK(x.url)).map(x=>[x.url,x])).values()].map(c=>({
+  ...c,lexicalScore:mediaScore(c,q),licenseMetadataRecognized:safeLicense(c.license)
+ })).filter(c=>c.lexicalScore>=35).sort((a,b)=>b.lexicalScore-a.lexicalScore).slice(0,n*2);
+ return {query:q,sceneId,candidates:ranked,rawCandidateCount:all.length,
+  rejectedByLexicalFilter:Math.max(0,all.length-ranked.length),providerErrors:errors,
+  sourceCount:tasks.length,autoApproved:false,
+  note:'Unverified candidates. Lexical score is not semantic proof. Preview relevance, source rights, attribution, codecs and URL before accepting.'};
 }
