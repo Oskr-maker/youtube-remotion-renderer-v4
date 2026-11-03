@@ -5,6 +5,7 @@ import os from 'os';
 import path from 'path';
 import {fileURLToPath} from 'url';
 import {spawnSync} from 'child_process';
+import {searchEditorialMedia} from './src/mediaSearch.js';
 
 import {bundle} from '@remotion/bundler';
 import {
@@ -71,9 +72,94 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// Discovery only. No candidate is accepted automatically.
+// n8n HTTP Request POST JSON: {"query":"...","limit":6}
+app.post('/media/search',async(req,res)=>{
+ try{
+  const result=await searchEditorialMedia(req.body?.query,{limit:req.body?.limit,providers:req.body?.providers||['openverse','commons'],mediaTypes:req.body?.mediaTypes||['image','video'],context:req.body?.context||'',sceneId:req.body?.sceneId||''});
+  res.json({...result,shotId:req.body?.shotId||null,sceneId:req.body?.sceneId||null});
+ }catch(error){res.status(400).json({error:String(error.message||error)});}
+});
+
 // ======================================================
 // RENDER
 // ======================================================
+
+
+// V8 manifest contract adapter: legacy timeline and n8n semantic shots.
+const adaptManifestV8 = (outer) => {
+  const m=outer?.manifest && Array.isArray(outer.manifest.shots)?outer.manifest:outer;
+  if (Array.isArray(m?.timelineShots) && m.timelineShots.length && m.motionGraphicsReady) return m;
+  if (!Array.isArray(m?.shots) || !m.shots.length) throw new Error('Missing shots or timelineShots');
+  if(m.manifestQC?.structuralQC===false || m.manifestQC?.timelineConsistent===false) throw new Error('Structural QC failed');
+  const fps=Number(m.fps)||30;
+  if(!Number.isFinite(fps)||fps<1||fps>120)throw new Error('Invalid fps');
+  const ids=new Set(); let previousEnd=-1;
+  const timelineShots=[...m.shots].sort((a,b)=>Number(a.productionSequence)-Number(b.productionSequence)).map(sh=>{
+    if(!sh?.shotId||ids.has(sh.shotId))throw new Error('Duplicate or missing shotId');
+    ids.add(sh.shotId);
+    const start=Number(sh.globalStartSec),duration=Number(sh.durationSec);
+    if(!Number.isFinite(start)||!Number.isFinite(duration)||start<0||duration<=0)throw new Error('Invalid timing: '+sh.shotId);
+    const startFrame=Math.round(start*fps),endFrame=Math.round((start+duration)*fps);
+    if(startFrame<previousEnd-1)throw new Error('Overlapping shot: '+sh.shotId);
+    previousEnd=endFrame;
+    const asset=sh.visualAsset||{},plan=sh.uiMotionPlan||{};
+    const locked=sh.sceneId==='S0'||asset.locked===true||sh.visualStrategy?.locked===true;
+    return {...sh,startFrame,durationFrames:Math.max(1,endFrame-startFrame),visual:asset,
+      template:locked?(asset.template||sh.template):(plan.template||sh.template||asset.template||'generic'),
+      layout:locked?(asset.layout||sh.layout):(plan.layout||sh.layout||asset.layout||'object_explainer'),
+      locked,preserveExistingRenderer:locked,semanticPlan:plan,
+      editorialTreatment:(!locked&&plan.editorialDesign?.visualDesignReady===true)?'contextual_cut_v12':sh.editorialTreatment
+    };
+  });
+  const totalDurationFrames=Math.max(...timelineShots.map(sh=>sh.startFrame+sh.durationFrames));
+  return {...m,timelineShots,totalDurationFrames,fps,motionGraphicsReady:true,
+    renderTarget:{...m.renderTarget,compositionId:m.renderTarget?.compositionId||'YouTubeV4'}};
+};
+
+
+/**
+ * Preflight for film-first longform.
+ * POST /audit-v8 with a manifest JSON object.
+ * Prevents equating "render succeeded" with a watchable video.
+ */
+app.post('/audit-v8', (req, res) => {
+ try {
+  const root=req.body||{};
+  const m=Array.isArray(root.manifest?.shots)?root.manifest:root;
+  const shots=Array.isArray(m.shots)?m.shots:
+    Array.isArray(m.timelineShots)?m.timelineShots:[];
+  if(!shots.length) return res.status(400).json({ok:false,error:'No shots in manifest'});
+  let realVideo=0,realImage=0,abstract=0,missing=0;
+  const details=shots.map(sh=>{
+   const stock=sh.uiMotionPlan?.stock||sh.stock||sh.visual?.stock||{};
+   const media=sh.visualAsset||sh.visual||{};
+   const url=String((stock.available===true?stock.url:null)||((media.accepted===true||media.ready===true)&&media.url)||'');
+   const image=String(sh.imageUrl||media.imageUrl||'');
+   const valid=url.startsWith('https://')||url.startsWith('http://');
+   const isImage=Boolean(image&&/^https?:\/\//.test(image))||(/\.(jpe?g|png|webp)(\?|$)/i.test(url));
+   const type=valid?(isImage?'image':'video'):'graphics';
+   if(type==='video')realVideo++;
+   else if(type==='image')realImage++;
+   else abstract++;
+   if(!valid&&!image&&!sh.uiMotionPlan?.editorialDesign?.visualDesignReady)missing++;
+   return {shotId:sh.shotId||null,sceneId:sh.sceneId||null,type,approvedMediaURL:valid||Boolean(image)};
+  });
+  const covered=realVideo+realImage,ratio=covered/shots.length;
+  const repeated=details.reduce((a,x,i)=>a+(i>=2&&x.type==='graphics'&&details[i-1].type==='graphics'&&details[i-2].type==='graphics'?1:0),0);
+  const reasons=[];
+  if(ratio<.35) reasons.push('REAL_MEDIA_COVERAGE_LOW');
+  if(repeated>0) reasons.push('THREE_OR_MORE_GRAPHICS_IN_SEQUENCE');
+  if(missing>0) reasons.push('SHOTS_WITHOUT_MEDIA_OR_SPECIFIC_DESIGN');
+  return res.json({
+   ok:true,filmFirstReady:reasons.length===0,renderAllowed:true,
+   totalShots:shots.length,realVideo,realImage,graphicsOnly:abstract,
+   mediaCoveragePercent:Math.round(100*ratio),missingDesign:missing,
+   threeGraphicsStreakCount:repeated,reasons,shots:details,
+   note:'Editorial heuristic only; cannot verify actual clip content, license, or retention.'
+  });
+ }catch(e){return res.status(400).json({ok:false,error:e.message});}
+});
 
 app.post(
   '/render-v4',
@@ -92,9 +178,9 @@ app.post(
       let manifest;
 
       try {
-        manifest = JSON.parse(
+        manifest = adaptManifestV8(JSON.parse(
           req.body.manifest
-        );
+        ));
       } catch (error) {
         return res.status(400).json({
           status: 'error',
@@ -119,6 +205,36 @@ app.post(
         return res.status(400).json({
           status: 'error',
           message: 'timelineShots is empty'
+        });
+      }
+
+      // Editorial quality gate on TEST branch: never spend render time on a
+      // preview that contains zero real footage or approved photography.
+      // Preserve existing request contract, but expose a clear actionable error.
+      const mediaOf = (shot) => {
+        const candidates = [
+          shot?.stock, shot?.uiMotionPlan?.stock, shot?.visual?.stock,
+          shot?.visualAsset, shot?.acceptedStockAsset?.render,
+          shot?.visual?.visualAsset
+        ];
+        for (const x of candidates) {
+          if (!x || typeof x !== 'object') continue;
+          const url = String(x.url || x.src || '');
+          const approved = x.available === true ||
+            x.accepted === true || x.role === 'primary' && x.method === 'external_video';
+          if (approved && (url.startsWith('https://') || url.startsWith('http://'))) return url;
+        }
+        return null;
+      };
+      const allMedia = manifest.timelineShots.map(mediaOf).filter(Boolean);
+      if (!allMedia.length) {
+        return res.status(422).json({
+          status: 'editorial_blocked',
+          reason: 'NO_APPROVED_REAL_MEDIA',
+          message: 'No se renderiza una muestra compuesta solo por graficos. Selecciona y adjunta metraje aprobado al manifest antes de renderizar.',
+          shots: manifest.timelineShots.length,
+          realMediaShots: 0,
+          nextStep: 'Conectar recursos reales aprobados del nodo Accepted Stock Asset al manifest final'
         });
       }
 
