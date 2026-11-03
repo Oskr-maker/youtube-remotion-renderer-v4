@@ -1,5 +1,5 @@
 /**
- * PREP - Cinematic Search Queries V3
+ * PREP - Cinematic Search Queries V3.1
  * n8n Code: Run Once for All Items
  * INPUT: V6.8 - ENRICH - Semantic Assets
  * OUTPUT: 1 documentary asset-search brief per eligible scene.
@@ -58,7 +58,18 @@ for(const [sceneId,shots] of byScene){
    ...ordered.map(s=>s.narrationContext?.visualContextText).filter(Boolean),
    ...ordered.map(s=>s.voiceoverExcerpt).filter(Boolean)
  ].join(' ').slice(0,2200);
- const plan=matchedPlan(context);
+ // Specific opening intent wins over incidental keywords later in narration.
+ const lead=normalize(context.slice(0,330));
+ let plan=null;
+ if(/misma peticion|primero vaga|luego especifica|redactar un correo/.test(lead)){
+   plan={id:'prompt_comparison',query:'email writing computer keyboard',visible:'Two real email drafts from vague versus specific prompts, with annotated differences'};
+ } else if(/solicitud de trabajo en un formulario|ahora junto varias piezas|un flujo podria/.test(lead)){
+   plan={id:'workflow_demo',query:'online form computer screen automation',visible:'Real form with synthetic data -> workflow steps -> review notification'};
+ } else if(/despues de estas pruebas|me quedo con una regla/.test(lead)){
+   plan={id:'conclusion',query:'checklist notebook computer desk',visible:'Real before-after evidence and practical decision checklist summarizing verified experiments'};
+ } else {
+   plan=matchedPlan(context);
+ }
  if(!plan){
    out.push({json:{
      shotId:first.shotId,sceneId,searchQuery:null,
@@ -74,7 +85,7 @@ for(const [sceneId,shots] of byScene){
    context:context.slice(0,450),
    providers:['openverse','commons'],
    mediaTypes:['image','video'],
-   limit:4,queryPlanVersion:'v3_narration_grounded',
+   limit:4,productionVisualPriority:['real_demonstration','relevant_documentary_asset','original_screenshot'],queryPlanVersion:'v3.1_narration_grounded',
    skipped:false,autoApproved:false,
    mergeRequiresHumanOrVerifiedSemanticQC:true
  }});
