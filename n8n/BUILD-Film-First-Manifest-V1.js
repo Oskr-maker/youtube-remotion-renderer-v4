@@ -1,5 +1,5 @@
 /**
- * BUILD Film First Manifest V2.0
+ * BUILD Film First Manifest V2.1
  * n8n Code, Run Once for All Items.
  * Connect V8 final manifest -> THIS -> SPLIT.
  * Supports approved assets from upstream nodes, item payload and matching IDs.
@@ -46,7 +46,14 @@ const patched=m.shots.map(sh=>{
    filmFirstAsset:{source:approved?.source||'existing_approved_shot',verifiedRendererAccess:false,licenseVerified:false}};
 });
 const count=patched.filter(sh=>U(sh.stock?.url)&&sh.stock?.available===true).length;
-const qc={version:'v2',totalShots:patched.length,approvedMediaShots:count,coveragePercent:Math.round(count/patched.length*100),matchedStockItems:found.length,readErrors,missingShotIds:patched.filter(sh=>!U(sh.stock?.url)).map(sh=>sh.shotId),ready:count>0};
+const sceneCoverage={};
+for(const sh of patched){
+ const key=String(sh.sceneId||'UNKNOWN');
+ if(!sceneCoverage[key])sceneCoverage[key]={total:0,approvedVideo:0};
+ sceneCoverage[key].total++;
+ if(sh.stock?.available===true&&U(sh.stock?.url))sceneCoverage[key].approvedVideo++;
+}
+const qc={version:'v2.1',totalShots:patched.length,approvedMediaShots:count,coveragePercent:Math.round(count/patched.length*100),matchedStockItems:found.length,sceneCoverage,readErrors,missingShotIds:patched.filter(sh=>!U(sh.stock?.url)).map(sh=>sh.shotId),ready:count>0};
 if(!count)throw Error('FILM FIRST: no approved footage matched. Stock nodes read errors: '+JSON.stringify(readErrors)+'. Ensure accepted stock branch is executed and joined by shotId.');
 const output={...m,shots:patched,filmFirstQC:qc};
 return [{json:m===root?{...root,...output,filmFirstQC:qc}:{...root,manifest:output,filmFirstQC:qc}}];
