@@ -76,7 +76,7 @@ app.get('/health', async (req, res) => {
 // n8n HTTP Request POST JSON: {"query":"...","limit":6}
 app.post('/media/search',async(req,res)=>{
  try{
-  const result=await searchEditorialMedia(req.body?.query,{limit:req.body?.limit,providers:req.body?.providers||['commons','nasa']});
+  const result=await searchEditorialMedia(req.body?.query,{limit:req.body?.limit,providers:req.body?.providers||['openverse','commons'],mediaTypes:req.body?.mediaTypes||['image','video'],context:req.body?.context||'',sceneId:req.body?.sceneId||''});
   res.json({...result,shotId:req.body?.shotId||null,sceneId:req.body?.sceneId||null});
  }catch(error){res.status(400).json({error:String(error.message||error)});}
 });
