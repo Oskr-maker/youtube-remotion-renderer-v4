@@ -1,51 +1,83 @@
 /**
- * PREP - Cinematic Search Queries V2.1
- * n8n Code | Run Once for All Items
- * INPUT: V6.8 - ENRICH - Semantic Assets (75 shot items)
- * OUTPUT: 1 focused research query per eligible scene; 10 maximum for S1..S10
- * NOT a final shot-to-asset assignment; no invented footage or auto approval.
+ * PREP - Cinematic Search Queries V3
+ * n8n Code: Run Once for All Items
+ * INPUT: V6.8 - ENRICH - Semantic Assets
+ * OUTPUT: 1 documentary asset-search brief per eligible scene.
+ *
+ * Align search to actual narration, not to a hardcoded chapter number.
+ * Prevents visually irrelevant B-roll from being approved.
+ * NO new API cost, NO automatic asset approval.
  */
-const A=x=>Array.isArray(x)?x:[];
-const O=x=>x&&typeof x==='object'&&!Array.isArray(x)?x:{};
-const T=x=>String(x??'').trim();
-const plans={
- S1:['professional computer workstation documentary','laptop computer close up workflow'],
- S2:['checking document facts research','person verifying information sources'],
- S3:['handwritten notes on desk','sorting paper notes notebook'],
- S4:['spreadsheet rows on computer monitor','data table laptop screen'],
- S5:['source citations research documents','fact checking books documents'],
- S6:['digital image editing monitor','photo editing creative workspace'],
- S7:['automation workflow diagram computer','software developer connecting workflow'],
- S8:['computer error warning screen','person troubleshooting laptop'],
- S9:['computer data privacy security','password protection laptop screen'],
- S10:['task comparison decision making','reviewing results notes checklist']
-};
-const items=$input.all().map(x=>O(x.json));
-const byScene=new Map();
-for(const d of items){
- const scene=T(d.sceneId||d.narrationContext?.sceneId),shot=T(d.shotId);
- if(!scene||!shot||scene==='S0'||scene==='S11')continue;
- if(!byScene.has(scene))byScene.set(scene,[]);
- byScene.get(scene).push(d);
+
+const asObject = x => x && typeof x === 'object' && !Array.isArray(x) ? x : {};
+const text = x => String(x ?? '').trim();
+const normalize = s => text(s).toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const items = $input.all().map(x => asObject(x.json));
+const byScene = new Map();
+
+for(const d of items) {
+  const id=text(d.sceneId || d.narrationContext?.sceneId);
+  if(!id || id === 'S0' || id === 'S11')continue;
+  if(!byScene.has(id))byScene.set(id,[]);
+  byScene.get(id).push(d);
 }
-const output=[],seen=new Set();
-for(const [scene,shots] of byScene){
- const queries=plans[scene]||[];
- const sorted=[...shots].sort((a,b)=>(Number(a.productionSequence)||0)-(Number(b.productionSequence)||0));
- for(let i=0;i<Math.min(queries.length,1);i++){
-  const sh=sorted[Math.min(i,sorted.length-1)];
-  const query=T(queries[i]);
-  if(!query||seen.has(query))continue;
-  seen.add(query);
-  output.push({json:{
-   shotId:sh.shotId,sceneId:scene,searchQuery:query,
-   context:T(sh.narrationContext?.visualContextText||sh.narrationContext?.fullSceneNarration||sh.voiceoverExcerpt).slice(0,450),
-   providers:['openverse','commons'],
-   mediaTypes:['image','video'],limit:6,
-   queryPlanVersion:'v2.1',autoApproved:false,
-   mergeRequiresHumanOrVerifiedSemanticQC:true
-  }});
+
+// Editorially grounded in the actual voiceover contexts of this video.
+// The matching rules take priority over scene numbering.
+const stories=[
+ {id:'voice_note',pattern:/nota de voz|audio de una reunion|idea grabada|transcri/,
+  query:'voice recording smartphone microphone memo',visible:'Hands recording a voice memo on a phone; demonstrate a real transcript if available'},
+ {id:'spreadsheet',pattern:/hoja de calculo|formula|celdas|excel/,
+  query:'spreadsheet data cells laptop screen',visible:'Actual spreadsheet showing a formula and its result, not generic office B-roll'},
+ {id:'photo_analysis',pattern:/analisis visual|foto de un escritorio|fotografia|analizar una imagen/,
+  query:'desk photograph documents everyday objects',visible:'Real photo of a desk and the objects the AI must identify'},
+ {id:'document',pattern:/documento extenso|resumir un documento|resumen de un documento|decisiones fechas/,
+  query:'paper document with handwritten notes desk',visible:'Original marked-up document, highlighting real dates and decisions'},
+ {id:'workflow',pattern:/flujo|formulario|solicitud de trabajo|encadenar/,
+  query:'computer workflow automation form',visible:'Real form submission followed by visible steps in a workflow'},
+ {id:'fact_check',pattern:/fuentes|dato inventado|respuesta correcta|verificar|comprobar informacion|seguridad del tono/,
+  query:'fact checking source documents references',visible:'Side-by-side verified claim and its source; no invented evidence'},
+ {id:'privacy',pattern:/datos de clientes|informacion real|nombres|permisos|privacidad|datos personales/,
+  query:'data privacy document redaction laptop',visible:'Realistic redaction of private data before sending it to AI'},
+ {id:'compare',pattern:/comparar|comparacion|tarea manual|experimentos|resultados/,
+  query:'hands comparing handwritten checklist on desk',visible:'Actual before-after result comparison, including the manual baseline'}
+];
+
+function matchedPlan(context) {
+ const norm=normalize(context);
+ for(const p of stories)if(p.pattern.test(norm))return p;
+ return null;
+}
+
+const out=[];
+for(const [sceneId,shots] of byScene){
+ const ordered=[...shots].sort((a,b)=>(Number(a.productionSequence)||0)-(Number(b.productionSequence)||0));
+ const full=ordered.map(s=>text(s.narrationContext?.fullSceneNarration)).find(Boolean);
+ const first=ordered[0];
+ const context=full || [
+   ...ordered.map(s=>s.narrationContext?.visualContextText).filter(Boolean),
+   ...ordered.map(s=>s.voiceoverExcerpt).filter(Boolean)
+ ].join(' ').slice(0,2200);
+ const plan=matchedPlan(context);
+ if(!plan){
+   out.push({json:{
+     shotId:first.shotId,sceneId,searchQuery:null,
+     skipped:true,reason:'NO_GROUNDED_VISUAL_QUERY',
+     context:context.slice(0,450),autoApproved:false
+   }});
+   continue;
  }
+ out.push({json:{
+   shotId:first.shotId,sceneId,
+   searchQuery:plan.query,semanticConcept:plan.id,
+   desiredVisualEvidence:plan.visible,
+   context:context.slice(0,450),
+   providers:['openverse','commons'],
+   mediaTypes:['image','video'],
+   limit:4,queryPlanVersion:'v3_narration_grounded',
+   skipped:false,autoApproved:false,
+   mergeRequiresHumanOrVerifiedSemanticQC:true
+ }});
 }
-if(!output.length)throw Error('CINEMA V2: no eligible scene searches generated');
-return output;
+if(!out.length)throw Error('CINEMA V3: no eligible scenes');
+return out;
