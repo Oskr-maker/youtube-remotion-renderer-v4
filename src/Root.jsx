@@ -1322,17 +1322,18 @@ const V13FilmScene=({shot})=>{
  const scale=1.045+p*.085,fade=interpolate(frame,[0,Math.min(16,duration/5),Math.max(16,duration-15),duration],[0,1,1,0],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
  const lead=shortText(shot?.uiMotionPlan?.editorialDesign?.visualInstruction||brief?.visualInstruction||shot?.visualIdea||'',94);
  const tag=String(brief?.concept||shot?.concept||'EN CONTEXTO').replace(/_/g,' ').toUpperCase();
+ const generated=shot?.stock?.provider==='comfyui_local'||shot?.visualAsset?.provider==='comfyui_local';
  return <AbsoluteFill style={{fontFamily:FONT,background:'#030609',color:'#fff',overflow:'hidden'}}>
    <AbsoluteFill style={{transform:`scale(${scale})`}}>
     {source?<Video src={source} muted loop style={{height:'100%',width:'100%',objectFit:'cover'}}/>:<Img src={image} style={{height:'100%',width:'100%',objectFit:'cover'}}/>}
    </AbsoluteFill>
    <AbsoluteFill style={{background:'linear-gradient(90deg,rgba(2,8,14,.67),rgba(2,8,14,.08) 65%),linear-gradient(0deg,rgba(1,7,13,.84),transparent 47%)'}}/>
-   <div style={{position:'absolute',top:75,left:95,fontWeight:900,fontSize:22,letterSpacing:4,color:'#c5edf3',opacity:fade}}>HISTORIA REAL · {tag}</div>
+   <div style={{position:'absolute',top:75,left:95,fontWeight:900,fontSize:22,letterSpacing:4,color:'#c5edf3',opacity:fade}}>{generated?'RECREACIÓN CON IA':'HISTORIA REAL'} · {tag}</div>
    <div style={{position:'absolute',bottom:135,left:93,right:210,opacity:fade}}>
     <div style={{fontSize:58,fontWeight:930,lineHeight:1.12,textShadow:'0 3px 16px rgba(0,0,0,.65)'}}>{captions.length?captions[beat]:lead}</div>
     <div style={{height:7,background:'#44cee1',width:`${Math.round(p*100)}%`,maxWidth:780,marginTop:34,borderRadius:6}}/>
    </div>
-   <div style={{position:'absolute',right:88,bottom:52,fontSize:16,color:'#c8d3d8',opacity:.8}}>Imágenes de recurso · Escena ilustrativa</div>
+   <div style={{position:'absolute',right:88,bottom:52,fontSize:16,color:'#c8d3d8',opacity:.8}}>{generated?'Vídeo generado con IA · Escena ilustrativa':'Imágenes de recurso · Escena ilustrativa'}</div>
   </AbsoluteFill>;
 };
 
