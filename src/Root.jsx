@@ -1274,11 +1274,83 @@ const V12EditorialCut = ({shot,brief}) => {
  return <V11Diagram shot={shot} brief={brief}/>;
 };
 
+
+const S10DecisionSequence = ({shot}) => {
+ const frame=useCurrentFrame(),{fps}=useVideoConfig();
+ const n=Number(String(shot.shotId||'').split('_').pop()),p=frame/Math.max(1,shot.durationFrames||210);
+ const appear=i=>spring({frame:Math.max(0,frame-i*fps*.3),fps,config:{damping:19,stiffness:90}});
+ const entries=n===4?
+ [['DELEGAR','Ordenar notas','Tarea reversible'],['ASISTIR Y REVISAR','Comprobar fuentes','Validación humana'],['NO AUTOMATIZAR','Decisión sensible','Detener ejecución']]:
+ n===5?[['SOLICITUD','Decisión de impacto','No enviar'],['RIESGO','Faltan comprobaciones','Posible daño'],['CONTROL','Permiso humano','Proceso detenido']]:
+ n===6?[['RESPUESTA','Explicación generada','Sin validar'],['EVIDENCIA','Comprobar datos','Sin inventar fuentes'],['PERSONA','Aceptar o corregir','Revisión necesaria']]:
+ [['SELECCIONAR','Tarea repetitiva','Prueba pequeña'],['COMPROBAR','Tiempo con revisión','Medir el esfuerzo'],['DECIDIR','¿Hay ahorro real?','Conservar o descartar']];
+ const heading={4:'¿DELEGAR, REVISAR O DETENER?',5:'NO AUTOMATIZAR UNA DECISIÓN SENSIBLE',6:'COMPROBAR ANTES DE CONFIAR',7:'MEDIR EL RESULTADO REAL'}[n];
+ const accent=['#45c7e0','#75e5b7','#ff927e'];
+ return <AbsoluteFill style={{fontFamily:FONT,color:'#f5faff',background:'linear-gradient(125deg,#061120,#102b3c)'}}>
+  <Grid opacity={.025}/>
+  <div style={{position:'absolute',top:82,left:104,color:'#80dcdf',fontSize:22,fontWeight:900,letterSpacing:3}}>DECISIONES DE USO · SIMULACIÓN ILUSTRATIVA</div>
+  <div style={{position:'absolute',top:139,left:104,right:100,fontWeight:950,fontSize:63,lineHeight:1.07}}>{heading}</div>
+  <div style={{position:'absolute',top:340,left:105,right:105,bottom:195,display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:29}}>
+   {entries.map((x,i)=><div key={i} style={{padding:36,borderRadius:25,background:'rgba(12,31,46,.96)',border:'2px solid '+accent[i],boxShadow:'0 22px 70px rgba(0,0,0,.32)',opacity:appear(i),transform:`translateY(${(1-appear(i))*45}px)`}}>
+    <div style={{fontSize:23,fontWeight:950,color:accent[i],letterSpacing:2}}>{x[0]}</div>
+    <div style={{fontSize:45,fontWeight:900,lineHeight:1.1,marginTop:78}}>{x[1]}</div>
+    <div style={{fontSize:27,color:'#b4d0dc',marginTop:35}}>{x[2]}</div>
+    <div style={{height:10,width:`${Math.min(100,p*300)}%`,borderRadius:8,background:accent[i],marginTop:51}}/>
+   </div>)}
+  </div>
+  <div style={{position:'absolute',bottom:85,left:110,right:110,fontSize:27,color:'#a8c8d2'}}>{n===4?'La automatización cambia según el riesgo':n===5?'Un sistema responsable debe poder detenerse':n===6?'Una respuesta convincente no es una prueba':'Conservar solo si ahorra trabajo y mantiene el control'}</div>
+  <div style={{position:'absolute',bottom:32,left:110,fontSize:17,color:'#7898a7'}}>Ejemplo visual ficticio · No implica una ejecución real</div>
+ </AbsoluteFill>;
+};
+
+
+/**
+ * Film-first scene: actual approved media occupies the frame.
+ * Minimal overlays, active camera crop and progressive narrative captions.
+ * Does not introduce a placeholder video or invent external footage.
+ */
+const V13FilmScene=({shot})=>{
+ const frame=useCurrentFrame(),{fps}=useVideoConfig();
+ const duration=getDurationFrames(shot),p=clamp(frame/duration,0,1);
+ const {source,image}=pickMedia(shot);
+ const brief=V9Data(shot)||{};
+ const beats=safeArray(shot?.editorialTreatmentBeats).length?safeArray(shot.editorialTreatmentBeats):
+   safeArray(brief.visualBeats).length?safeArray(brief.visualBeats):
+   safeArray(shot?.uiMotionPlan?.editorialDesign?.visualBeats);
+ const captions=beats.map(v=>shortText(v,72)).filter(Boolean).slice(0,3);
+ const beat=captions.length?Math.min(captions.length-1,Math.floor(p*captions.length)):0;
+ const scale=1.045+p*.085,fade=interpolate(frame,[0,Math.min(16,duration/5),Math.max(16,duration-15),duration],[0,1,1,0],{extrapolateLeft:'clamp',extrapolateRight:'clamp'});
+ const lead=shortText(shot?.uiMotionPlan?.editorialDesign?.visualInstruction||brief?.visualInstruction||shot?.visualIdea||'',94);
+ const tag=String(brief?.concept||shot?.concept||'EN CONTEXTO').replace(/_/g,' ').toUpperCase();
+ const generated=shot?.stock?.provider==='comfyui_local'||shot?.visualAsset?.provider==='comfyui_local';
+ return <AbsoluteFill style={{fontFamily:FONT,background:'#030609',color:'#fff',overflow:'hidden'}}>
+   <AbsoluteFill style={{transform:`scale(${scale})`}}>
+    {source?<Video src={source} muted loop style={{height:'100%',width:'100%',objectFit:'cover'}}/>:<Img src={image} style={{height:'100%',width:'100%',objectFit:'cover'}}/>}
+   </AbsoluteFill>
+   <AbsoluteFill style={{background:'linear-gradient(90deg,rgba(2,8,14,.67),rgba(2,8,14,.08) 65%),linear-gradient(0deg,rgba(1,7,13,.84),transparent 47%)'}}/>
+   <div style={{position:'absolute',top:75,left:95,fontWeight:900,fontSize:22,letterSpacing:4,color:'#c5edf3',opacity:fade}}>{generated?'RECREACIÓN CON IA':'HISTORIA REAL'} · {tag}</div>
+   <div style={{position:'absolute',bottom:135,left:93,right:210,opacity:fade}}>
+    <div style={{fontSize:58,fontWeight:930,lineHeight:1.12,textShadow:'0 3px 16px rgba(0,0,0,.65)'}}>{captions.length?captions[beat]:lead}</div>
+    <div style={{height:7,background:'#44cee1',width:`${Math.round(p*100)}%`,maxWidth:780,marginTop:34,borderRadius:6}}/>
+   </div>
+   <div style={{position:'absolute',right:88,bottom:52,fontSize:16,color:'#c8d3d8',opacity:.8}}>{generated?'Vídeo generado con IA · Escena ilustrativa':'Imágenes de recurso · Escena ilustrativa'}</div>
+  </AbsoluteFill>;
+};
+
 const V8ShotRenderer = ({shot}) => {
+
   if(shot?.sceneId==='S0'||shot?.locked===true||shot?.preserveExistingRenderer===true) return <LogicHookStage shot={shot}/>;
   const {source,image}=pickMedia(shot);
   const brief=V9Data(shot);
-  if(brief?.semanticGroundingVerified===true && shot?.editorialTreatment==='contextual_cut_v12' && String(brief.concept||'')!=='effort_cost') return <V12EditorialCut shot={shot} brief={brief}/>;
+  // S10 no longer overrides the director with static triple-card template.
+  // Media-first route remains available for approved video and stills.
+  // Film-first: when a previously accepted real video/photo exists, use it.
+  // Never override S0 or fabricate a media URL.
+  if(source||image) return <V13FilmScene shot={shot}/>;
+  const semanticReady=brief?.semanticGroundingVerified===true && (shot?.semanticPlan?.editorialDesign?.visualDesignReady===true || shot?.uiMotionPlan?.editorialDesign?.visualDesignReady===true || shot?.editorialTreatment==='contextual_cut_v12');
+  if(semanticReady && ['workflow','prompt','proposal','sample_feedback','demonstrated_skill'].includes(String(brief.concept||'')))return <V12EditorialCut shot={shot} brief={brief}/>;
+  if(semanticReady && brief.concept==='comparison')return <V9Comparison shot={shot} brief={brief} accent={V7Theme(shot)}/>;
+  if(semanticReady && ['weekly_plan','verification','privacy','effort_cost'].includes(String(brief.concept||'')))return <V11Diagram shot={shot} brief={brief}/>;
   if((source||image) && brief?.semanticGroundingVerified===true && ['sample_feedback','demonstrated_skill','weekly_plan','proposal'].includes(String(brief.concept||''))) return <V116StockStory shot={shot} brief={brief}/>;
   if(source||image) return <V10StockEditorial shot={shot}/>;
   if(brief && brief.semanticGroundingVerified===true && V11Kinds.has(String(brief.diagramType||''))) return <V11Diagram shot={shot} brief={brief}/>;
