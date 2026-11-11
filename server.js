@@ -5,6 +5,7 @@ import os from 'os';
 import path from 'path';
 import {fileURLToPath} from 'url';
 import {spawnSync} from 'child_process';
+import {randomUUID, timingSafeEqual} from 'crypto';
 import {searchEditorialMedia} from './src/mediaSearch.js';
 
 import {bundle} from '@remotion/bundler';
@@ -48,6 +49,56 @@ const getServeUrl = async () => {
 
   return serveUrlPromise;
 };
+
+
+// ======================================================
+// TEST ONLY: upload privately generated MP4 clips.
+// Configure COMFY_MEDIA_TOKEN and MEDIA_DIR (persistent volume).
+// No secret -> upload disabled. No persistent dir -> upload disabled.
+// ======================================================
+const mediaDir = process.env.MEDIA_DIR || '';
+const mediaToken = process.env.COMFY_MEDIA_TOKEN || '';
+const readyForMediaUpload = () => Boolean(mediaDir && mediaToken && mediaToken.length >= 32);
+const mediaUpload = multer({
+  dest: os.tmpdir(),
+  limits: {fileSize: 80 * 1024 * 1024, files: 1}
+});
+function authMedia(req) {
+  const supplied = String(req.headers['x-comfy-media-token'] || '');
+  const a = Buffer.from(supplied);
+  const b = Buffer.from(mediaToken);
+  return a.length === b.length && a.length > 0 && timingSafeEqual(a,b);
+}
+app.post('/media/upload-comfy', (req,res,next) => {
+  if (!readyForMediaUpload()) return res.status(503).json({ok:false,error:'MEDIA_DIR and COMFY_MEDIA_TOKEN (32+ chars) required'});
+  if (!authMedia(req)) return res.status(401).json({ok:false,error:'Unauthorized'});
+  next();
+},mediaUpload.single('video'),(req,res) => {
+  try {
+    if(!req.file)return res.status(400).json({ok:false,error:'Expected multipart field video'});
+    const fd = fs.openSync(req.file.path,'r');
+    const header = Buffer.alloc(16);
+    fs.readSync(fd,header,0,16,0);
+    fs.closeSync(fd);
+    if(header.toString('ascii',4,8)!=='ftyp') return res.status(415).json({ok:false,error:'Not an MP4 file'});
+    const id=randomUUID();
+    fs.mkdirSync(mediaDir,{recursive:true});
+    const file=id+'.mp4';
+    fs.copyFileSync(req.file.path,path.join(mediaDir,file));
+    const base=String(process.env.COMFY_PUBLIC_BASE_URL || '').replace(/\/$/,'');
+    const relativeUrl='/media/comfy/'+file;
+    return res.status(201).json({ok:true,id,relativeUrl,url:base?base+relativeUrl:null,bytes:req.file.size});
+  }catch(e){return res.status(500).json({ok:false,error:e.message});}
+  finally{if(req.file?.path)try{fs.unlinkSync(req.file.path)}catch{}}
+});
+app.get('/media/comfy/:file',(req,res)=>{
+ const file=String(req.params.file||'');
+ if(!/^[0-9a-f-]{36}\.mp4$/.test(file)||!mediaDir)return res.sendStatus(404);
+ const target=path.join(mediaDir,file);
+ if(!fs.existsSync(target))return res.sendStatus(404);
+ res.type('video/mp4');
+ return res.sendFile(target);
+});
 
 // ======================================================
 // HEALTH
